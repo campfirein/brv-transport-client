@@ -90,7 +90,7 @@ describeIntegration('TransportClient Integration Tests', () => {
         })
 
         // Trigger event emission (assumes server echoes events)
-        client.emit('test:event', {message: 'hello'})
+        client.request('test:event', {message: 'hello'})
       })
     })
 
@@ -103,7 +103,7 @@ describeIntegration('TransportClient Integration Tests', () => {
       })
 
       // First emission
-      client.emit('test:event', {count: 1})
+      client.request('test:event', {count: 1})
       await new Promise((resolve) => setTimeout(resolve, 100))
       expect(callCount).to.equal(1)
 
@@ -111,7 +111,7 @@ describeIntegration('TransportClient Integration Tests', () => {
       unsubscribe()
 
       // Second emission (should not trigger handler)
-      client.emit('test:event', {count: 2})
+      client.request('test:event', {count: 2})
       await new Promise((resolve) => setTimeout(resolve, 100))
       expect(callCount).to.equal(1) // Still 1, not incremented
     })
@@ -135,7 +135,7 @@ describeIntegration('TransportClient Integration Tests', () => {
           }
         })
 
-        client.emit('test:once', {message: 'once'})
+        client.request('test:once', {message: 'once'})
       })
     })
   })
@@ -150,7 +150,7 @@ describeIntegration('TransportClient Integration Tests', () => {
       this.timeout(5000)
 
       // Assumes server responds to 'echo' event with same data
-      const response = await client.request<{echo: string}>('echo', {message: 'test'})
+      const response = await client.requestWithAck<{echo: string}>('echo', {message: 'test'})
       expect(response).to.have.property('echo')
     })
 
@@ -159,7 +159,7 @@ describeIntegration('TransportClient Integration Tests', () => {
 
       try {
         // Request to an endpoint that never responds
-        await client.request('never:responds', {}, {timeout: 500})
+        await client.requestWithAck('never:responds', {}, {timeout: 500})
         expect.fail('Should have thrown timeout error')
       } catch (error: any) {
         expect(error.name).to.include('Timeout')
@@ -204,7 +204,7 @@ describeIntegration('TransportClient Integration Tests', () => {
           .joinRoom('test-room')
           .then(() => {
             // Emit to room (assumes server broadcasts back)
-            client.emit('broadcast:room', {roomName: 'test-room', message: 'hello'})
+            client.request('broadcast:room', {roomName: 'test-room', message: 'hello'})
           })
           .catch(reject)
       })

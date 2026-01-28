@@ -134,65 +134,35 @@ export interface ITransportClient {
   onStateChange(handler: ConnectionStateHandler): () => void
 
   /**
-   * Sends an event to the server.
-   * Supports fire-and-forget, callback, and Promise patterns.
+   * Sends an event to the server (fire-and-forget or with callback).
+   * Similar to Socket.IO's emit() method.
    *
    * @example Fire-and-forget
    * ```typescript
-   * client.request('event', data)
+   * client.request('log:entry', { level: 'info', message: 'Hello' })
    * ```
    *
    * @example With acknowledgment callback
    * ```typescript
-   * client.request('event', data, (response) => {
+   * client.request('ping', {}, (response) => {
    *   console.log('Server responded:', response)
    * })
    * ```
    *
-   * @example Promise-based with timeout (existing behavior)
-   * ```typescript
-   * const response = await client.request('event', data, { timeout: 5000 })
-   * ```
-   *
    * @param event - The event name
    * @param data - The request payload
-   * @param ackOrOptions - Callback function, request options, or omit for fire-and-forget
+   * @param ack - Optional callback for server acknowledgment
    * @throws TransportNotConnectedError if not connected
    * @throws InvalidEventNameError if event name is invalid
-   * @throws TransportRequestTimeoutError if Promise-based request times out
-   * @throws TransportRequestError if server returns an error (Promise mode only)
    */
   // Overload 1: Fire-and-forget (no third argument)
   request(event: string, data?: unknown): void
   // Overload 2: With acknowledgment callback
   request<T = unknown>(event: string, data: unknown, ack: (response: T) => void): void
-  // Overload 3: Promise-based with options (existing behavior)
-  request<TResponse = unknown, TRequest = unknown>(
-    event: string,
-    data?: TRequest,
-    options?: RequestOptions,
-  ): Promise<TResponse>
 
   /**
-   * Fire-and-forget event emission with no response expected.
-   * This is an explicit alias for request() without acknowledgment.
-   *
-   * @param event - The event name
-   * @param data - The event payload
-   * @throws TransportNotConnectedError if not connected
-   * @throws InvalidEventNameError if event name is invalid
-   *
-   * @example
-   * ```typescript
-   * // Send event without waiting for response
-   * client.emit('log:entry', { level: 'info', message: 'Hello' })
-   * ```
-   */
-  emit(event: string, data?: unknown): void
-
-  /**
-   * Promise-based request with explicit return type.
-   * This is an explicit alias for request() with options, providing clearer intent.
+   * Promise-based request that waits for server response.
+   * Similar to Socket.IO's emitWithAck() method.
    *
    * @param event - The event name
    * @param data - The request payload
@@ -206,13 +176,13 @@ export interface ITransportClient {
    * @example
    * ```typescript
    * // Request with typed response
-   * const user = await client.requestAsync<User>('user:get', { id: '123' })
+   * const user = await client.requestWithAck<User>('user:get', { id: '123' })
    *
    * // Request with custom timeout
-   * const result = await client.requestAsync('slow:operation', data, { timeout: 30000 })
+   * const result = await client.requestWithAck('slow:operation', data, { timeout: 30000 })
    * ```
    */
-  requestAsync<TResponse = unknown, TRequest = unknown>(
+  requestWithAck<TResponse = unknown, TRequest = unknown>(
     event: string,
     data?: TRequest,
     options?: RequestOptions,

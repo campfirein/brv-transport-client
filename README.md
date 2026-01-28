@@ -52,7 +52,7 @@ client.on('task:completed', (data) => {
 
 **5. Send tasks:**
 ```typescript
-await client.request('task:create', {
+await client.requestWithAck('task:create', {
   taskId: crypto.randomUUID(),
   type: 'query',
   content: 'What files handle authentication?'
@@ -78,7 +78,7 @@ client.on('llmservice:chunk', (data) => {
 })
 
 // Send task request
-await client.request('task:create', {
+await client.requestWithAck('task:create', {
   taskId: crypto.randomUUID(),
   type: 'query',
   content: 'Explain the authentication flow'
@@ -101,7 +101,7 @@ export class QueryUseCase {
 
     try {
       // Send query as task
-      await client.request('task:create', {
+      await client.requestWithAck('task:create', {
         taskId: crypto.randomUUID(),
         type: 'query',
         content: query
@@ -202,14 +202,15 @@ export const TransportProvider = ({children}) => {
 |--------|-------------|---------|
 | `client.on(event, handler)` | Listen for server events | `client.on('llmservice:chunk', handler)` |
 | `client.once(event, handler)` | Listen for event (one-time) | `client.once('task:completed', handler)` |
-| `client.request(event, data, opts?)` | Send request, wait for response | `await client.request('task:create', data)` |
-| `client.emit(event, data)` | Send fire-and-forget event | `client.emit('custom:event', data)` |
+| `client.request(event, data)` | Send fire-and-forget event | `client.request('custom:event', data)` |
+| `client.requestWithAck(event, data, opts?)` | Send request, wait for response | `await client.requestWithAck('task:create', data)` |
 | `client.disconnect()` | Close connection & cleanup | `await client.disconnect()` |
 
-### When to use `on()` vs `request()`?
+### When to use `on()` vs `requestWithAck()`?
 
 - **Use `client.on()`** for server broadcasts (LLM chunks, task status updates)
-- **Use `client.request()`** for request-response (task creation, session switching)
+- **Use `client.requestWithAck()`** for request-response (task creation, session switching)
+- **Use `client.request()`** for fire-and-forget events (no response needed)
 
 ## Common Events for CLI Integration
 
@@ -225,7 +226,7 @@ export const TransportProvider = ({children}) => {
 **Example:**
 ```typescript
 // Send task
-await client.request('task:create', {
+await client.requestWithAck('task:create', {
   taskId: crypto.randomUUID(),
   type: 'query',
   content: 'Explain authentication flow'
@@ -359,7 +360,7 @@ const {client} = await connectToTransport(undefined, {
 
 ```typescript
 // Per-request timeout override
-await client.request('task:create', data, {
+await client.requestWithAck('task:create', data, {
   timeout: 30000 // 30 seconds (default: 10s)
 })
 ```

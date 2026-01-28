@@ -96,8 +96,8 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
   })
 
   describe('Error Handling - Invalid Operations', () => {
-    it('should throw when emit() called while disconnected', () => {
-      expect(() => client.emit('test-event', {data: 'value'})).to.throw(
+    it('should throw when request() called while disconnected (fire-and-forget)', () => {
+      expect(() => client.request('test-event', {data: 'value'})).to.throw(
         TransportNotConnectedError,
         'Not connected to server',
       )
@@ -148,9 +148,9 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
       expect(() => client.once('', () => {})).to.throw(InvalidEventNameError)
     })
 
-    it('should throw for invalid event names in emit()', () => {
+    it('should throw for invalid event names in request()', () => {
       // Will throw TransportNotConnectedError first, but validates event name
-      expect(() => client.emit('', {data: 'value'})).to.throw(Error)
+      expect(() => client.request('', {data: 'value'})).to.throw(Error)
     })
   })
 
@@ -504,7 +504,7 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
       expect(client.once).to.be.a('function')
       expect(client.onStateChange).to.be.a('function')
       expect(client.request).to.be.a('function')
-      expect(client.emit).to.be.a('function')
+      expect(client.requestWithAck).to.be.a('function')
     })
 
     it('should return correct types from methods', () => {

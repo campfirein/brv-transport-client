@@ -514,18 +514,8 @@ export class TransportClient implements ITransportClient {
   public request(event: string, data?: unknown): void
   // Overload 2: With acknowledgment callback
   public request<T = unknown>(event: string, data: unknown, ack: (response: T) => void): void
-  // Overload 3: Promise-based with options (existing behavior)
-  public request<TResponse = unknown, TRequest = unknown>(
-    event: string,
-    data?: TRequest,
-    options?: RequestOptions,
-  ): Promise<TResponse>
   // Implementation
-  public request<TResponse = unknown, TRequest = unknown>(
-    event: string,
-    data?: TRequest,
-    ackOrOptions?: ((response: TResponse) => void) | RequestOptions,
-  ): void | Promise<TResponse> {
+  public request<T = unknown>(event: string, data?: unknown, ack?: (response: T) => void): void {
     // Validate event name
     validateEventName(event)
 
@@ -534,25 +524,35 @@ export class TransportClient implements ITransportClient {
       throw new TransportNotConnectedError('request')
     }
 
-    // Case 1: Fire-and-forget (no third arg)
-    if (ackOrOptions === undefined) {
+    // Fire-and-forget (no callback)
+    if (ack === undefined) {
       socket.emit(event, data)
       return
     }
 
-    // Case 2: With callback (third arg is function)
-    if (typeof ackOrOptions === 'function') {
-      socket.emit(event, data, ackOrOptions)
-      return
+    // With callback
+    socket.emit(event, data, ack)
+  }
+
+  public requestWithAck<TResponse = unknown, TRequest = unknown>(
+    event: string,
+    data?: TRequest,
+    options?: RequestOptions,
+  ): Promise<TResponse> {
+    // Validate event name
+    validateEventName(event)
+
+    const socket = this.socket
+    if (!socket?.connected) {
+      throw new TransportNotConnectedError('requestWithAck')
     }
 
-    // Case 3: Promise-based with options (existing behavior)
     // Validate timeout if explicitly provided
-    if (ackOrOptions.timeout !== undefined) {
-      this.validateTimeout(ackOrOptions.timeout, 'timeout')
+    if (options?.timeout !== undefined) {
+      this.validateTimeout(options.timeout, 'timeout')
     }
 
-    const timeout = ackOrOptions.timeout ?? this.#config.requestTimeoutMs
+    const timeout = options?.timeout ?? this.#config.requestTimeoutMs
 
     return new Promise((resolve, reject) => {
       let handled = false
@@ -584,18 +584,6 @@ export class TransportClient implements ITransportClient {
         }
       })
     })
-  }
-
-  public emit(event: string, data?: unknown): void {
-    this.request(event, data)
-  }
-
-  public requestAsync<TResponse = unknown, TRequest = unknown>(
-    event: string,
-    data?: TRequest,
-    options?: RequestOptions,
-  ): Promise<TResponse> {
-    return this.request(event, data, options)
   }
 
   /**
