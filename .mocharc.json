@@ -1,0 +1,8 @@
+{
+  "spec": "test/**/*.test.ts",
+  "require": ["tsx"],
+  "timeout": 10000,
+  "recursive": true,
+  "extension": ["ts"],
+  "node-option": ["experimental-specifier-resolution=node"]
+}

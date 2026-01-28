@@ -1,0 +1,17 @@
+*-debug.log
+*-error.log
+**/.DS_Store
+/.idea
+/dist
+/tmp
+/node_modules
+/coverage
+oclif.manifest.json
+
+yarn.lock
+pnpm-lock.yaml
+
+.npmrc
+
+# ByteRover workspace (local development only)
+.brv/

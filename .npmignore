@@ -1,0 +1,25 @@
+# Source files (only publish dist/)
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Development
+.git
+.gitignore
+
+# Testing
+test/
+dist/test/
+coverage/
+.mocharc.json
+
+# Linting
+eslint.config.mjs
+.prettierrc.json
+.prettierignore
+
+# CI/CD
+.github/
+
+# ByteRover workspace
+.brv/
