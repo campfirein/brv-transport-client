@@ -48,7 +48,10 @@ describe('deepFreeze', () => {
 
     it('should freeze nested arrays', () => {
       const obj = {
-        matrix: [[1, 2], [3, 4]],
+        matrix: [
+          [1, 2],
+          [3, 4],
+        ],
       }
       const frozen = deepFreeze(obj)
       expect(Object.isFrozen(frozen.matrix)).to.be.true

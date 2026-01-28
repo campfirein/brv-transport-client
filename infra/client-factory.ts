@@ -495,7 +495,7 @@ export function createTransportClientFactory(config?: TransportClientFactoryConf
  */
 export async function connectToTransport(
   fromDir?: string,
-  config?: TransportClientFactoryConfig
+  config?: TransportClientFactoryConfig,
 ): Promise<ConnectionResult> {
   const factory = new TransportClientFactory(config)
   return factory.connect(fromDir)

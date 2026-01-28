@@ -5,11 +5,7 @@ import {TransportClient} from '../../infra/socket-io-client.js'
 import {NoOpClientLogger} from '../../infra/no-op-client-logger.js'
 import {ExponentialBackoffStrategy} from '../../infra/reconnection-strategy.js'
 import {TimeBasedWakeDetector} from '../../infra/wake-detector.js'
-import {
-  InvalidOperationError,
-  TransportNotConnectedError,
-  InvalidEventNameError,
-} from '../../core/domain/errors/transport-error.js'
+import {TransportNotConnectedError, InvalidEventNameError} from '../../core/domain/errors/transport-error.js'
 
 describe('TransportClient - Edge Cases & Critical Paths', () => {
   let client: TransportClient
@@ -376,7 +372,7 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
       expect(unsubscribes).to.have.lengthOf(10)
 
       // Each should have unique unsubscribe function
-      unsubscribes.forEach((unsub, index) => {
+      unsubscribes.forEach((unsub) => {
         expect(unsub).to.be.a('function')
         unsub() // Should not affect others
       })
