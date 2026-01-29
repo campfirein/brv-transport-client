@@ -120,8 +120,11 @@ describe('TransportClientFactory', () => {
 
       const factory = new TransportClientFactory({
         discovery: mockDiscovery,
-        maxRetries: 1, // Minimal retries for faster test
-        retryDelayMs: 10,
+        maxRetries: 1,
+        retryDelayMs: 1,
+        warmUpTimeoutMs: 1,
+        warmUpSettleDelayMs: 1,
+        connectTimeoutMs: 10, // Fast timeout for test
       })
 
       try {
@@ -131,7 +134,7 @@ describe('TransportClientFactory', () => {
         expect(error).to.be.instanceOf(ConnectionFailedError)
         expect((error as ConnectionFailedError).port).to.equal(99999)
       }
-    }).timeout(10000)
+    })
 
     it('should use cwd as default fromDir', async () => {
       const mockDiscovery: IInstanceDiscovery = {
@@ -368,7 +371,10 @@ describe('TransportClientFactory - Logger Integration', () => {
       discovery: mockDiscovery,
       logger: mockLogger,
       maxRetries: 1,
-      retryDelayMs: 10,
+      retryDelayMs: 1,
+      warmUpTimeoutMs: 1,
+      warmUpSettleDelayMs: 1,
+      connectTimeoutMs: 10, // Fast timeout for test
     })
 
     try {
@@ -379,5 +385,5 @@ describe('TransportClientFactory - Logger Integration', () => {
 
     // Should have logged multiple messages
     expect(mockLogger.debug.callCount).to.be.greaterThan(1)
-  }).timeout(10000)
+  })
 })

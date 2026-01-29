@@ -62,6 +62,10 @@ export type TransportClientFactoryConfig = {
   readonly retryDelayMs?: number
   /** Timeout for HTTP warm-up request in ms (default: 1000) */
   readonly warmUpTimeoutMs?: number
+  /** Timeout for Socket.IO connect in ms (default: 5000) */
+  readonly connectTimeoutMs?: number
+  /** Delay after warm-up before connecting in ms (default: 100) */
+  readonly warmUpSettleDelayMs?: number
 }
 
 // ============================================================================
@@ -71,6 +75,7 @@ export type TransportClientFactoryConfig = {
 const DEFAULT_MAX_RETRIES = 8
 const DEFAULT_RETRY_DELAY_MS = 150
 const DEFAULT_WARMUP_TIMEOUT_MS = 1000
+const DEFAULT_CONNECT_TIMEOUT_MS = 5000
 const WARMUP_SETTLE_DELAY_MS = 100
 const SANDBOX_ERROR_MULTIPLIER = 2
 
@@ -107,6 +112,8 @@ export class TransportClientFactory implements IClientFactory {
   readonly #maxRetries: number
   readonly #retryDelayMs: number
   readonly #warmUpTimeoutMs: number
+  readonly #connectTimeoutMs: number
+  readonly #warmUpSettleDelayMs: number
 
   constructor(config?: TransportClientFactoryConfig) {
     // Inject dependencies or use defaults (DIP)
@@ -117,6 +124,8 @@ export class TransportClientFactory implements IClientFactory {
     this.#maxRetries = config?.maxRetries ?? DEFAULT_MAX_RETRIES
     this.#retryDelayMs = config?.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
     this.#warmUpTimeoutMs = config?.warmUpTimeoutMs ?? DEFAULT_WARMUP_TIMEOUT_MS
+    this.#connectTimeoutMs = config?.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS
+    this.#warmUpSettleDelayMs = config?.warmUpSettleDelayMs ?? WARMUP_SETTLE_DELAY_MS
   }
 
   /**
@@ -156,11 +165,14 @@ export class TransportClientFactory implements IClientFactory {
     // HTTP warm-up for sandbox environments
     this.log(`Attempting HTTP warm-up to ${url}`)
     await this.httpWarmUp(url)
-    await this.delay(WARMUP_SETTLE_DELAY_MS)
+    await this.delay(this.#warmUpSettleDelayMs)
 
     // Connection retry loop
     for (let attempt = 1; attempt <= this.#maxRetries; attempt++) {
-      const client = new TransportClient({logger: this.#logger})
+      const client = new TransportClient({
+        logger: this.#logger,
+        connectTimeoutMs: this.#connectTimeoutMs,
+      })
 
       try {
         this.log(`Connection attempt ${attempt}/${this.#maxRetries} to ${url}`)
