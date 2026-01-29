@@ -1,9 +1,9 @@
 /**
- * Re-export internal test dependencies from infra/testing.
- * This file exists for backward compatibility with existing tests.
+ * Re-export internal test dependencies from socket-io-client.
+ * This file exists for convenient test imports.
  *
  * @internal
  * @packageDocumentation
  */
 
-export type {InternalTestDependencies} from '../../infra/testing/test-dependencies.js'
+export type {InternalTestDependencies} from '../../infra/socket-io-client.js'

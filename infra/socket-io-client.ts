@@ -38,7 +38,6 @@ import {ForceReconnectManager} from './force-reconnect-manager.js'
 import {RoomManager} from './room-manager.js'
 import {TimeBasedWakeDetector} from './wake-detector.js'
 import {deepFreeze} from './utils/deep-freeze.js'
-import type {InternalTestDependencies} from './testing/test-dependencies.js'
 
 // ============================================================================
 // Configuration Types
@@ -152,6 +151,28 @@ export type TransportClientDependencies = {
  * Full options combining config and dependencies for public API.
  */
 export type TransportClientOptions = TransportClientConfig & TransportClientDependencies
+
+/**
+ * Internal dependencies for testing purposes only.
+ * Allows injection of mock components for unit testing.
+ *
+ * @internal
+ *
+ * @remarks
+ * **DO NOT USE IN PRODUCTION CODE**
+ *
+ * This type exists solely for testing purposes and allows tests to inject
+ * mock implementations of internal components. Using this in production
+ * code violates the encapsulation guarantees of TransportClient.
+ */
+export type InternalTestDependencies = {
+  /** Connection state manager (internal, for testing only) */
+  readonly stateManager?: ConnectionStateManager
+  /** Event dispatcher (internal, for testing only) */
+  readonly eventDispatcher?: EventDispatcher
+  /** Room manager (internal, for testing only) */
+  readonly roomManager?: RoomManager
+}
 
 /**
  * Internal options type that includes test dependencies.
