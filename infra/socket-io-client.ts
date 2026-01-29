@@ -758,36 +758,62 @@ export class TransportClient implements ITransportClient {
       }
 
       this.#reconnectHandlerInProgress = true
-      try {
-        this.log(`Built-in reconnect succeeded after ${attemptNumber} attempts`)
-        this.#stateManager.setState('connected')
 
-        // Skip re-registration during initial connect
-        if (this.#initialConnectInProgress) {
-          this.log('Skipping handler re-registration - initial connect in progress')
-          return
-        }
-
-        // Re-register handlers (prevents listener accumulation)
-        this.#eventDispatcher.clearSocketListeners()
-        this.#eventDispatcher.registerPendingHandlers()
-
-        // Rejoin rooms - verify socket is still current before rejoining
-        if (currentSocket?.connected && this.socket === currentSocket) {
-          this.#roomManager.rejoinRooms()
-        } else if (!currentSocket?.connected) {
-          // Retry after short delay if not yet connected
-          setTimeout(() => {
-            // Re-check socket is still current and connected
-            if (currentSocket?.connected && this.socket === currentSocket) {
-              this.#roomManager.rejoinRooms()
+      // Helper: Wait for socket.connected to be true
+      // Socket.IO may fire 'reconnect' event before socket is fully ready
+      const waitForSocketConnected = (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          if (socket.connected) {
+            resolve(true)
+            return
+          }
+          this.log('Reconnect event fired but socket not yet connected, waiting...')
+          const startTime = Date.now()
+          const checkInterval = setInterval(() => {
+            if (socket.connected) {
+              clearInterval(checkInterval)
+              this.log('Socket now connected after waiting')
+              resolve(true)
+            } else if (Date.now() - startTime > 5000) {
+              clearInterval(checkInterval)
+              this.log('Timeout waiting for socket.connected (5s), proceeding anyway')
+              resolve(false)
             }
-          }, 50)
-        }
-      } finally {
-        // Always reset flag to allow future reconnect handlers
-        this.#reconnectHandlerInProgress = false
+          }, 10)
+        })
       }
+
+      // Wait for socket to be actually connected before proceeding
+      void waitForSocketConnected()
+        .then((isConnected) => {
+          // Verify socket is still current after waiting
+          if (this.socket !== currentSocket) {
+            this.log('Socket superseded during wait, aborting reconnect handler')
+            return
+          }
+
+          this.log(`Built-in reconnect succeeded after ${attemptNumber} attempts`)
+          this.#stateManager.setState('connected')
+
+          // Skip re-registration during initial connect
+          if (this.#initialConnectInProgress) {
+            this.log('Skipping handler re-registration - initial connect in progress')
+            return
+          }
+
+          // Re-register handlers (prevents listener accumulation)
+          this.#eventDispatcher.clearSocketListeners()
+          this.#eventDispatcher.registerPendingHandlers()
+
+          // Rejoin rooms - only if socket is confirmed connected
+          if (isConnected && currentSocket?.connected && this.socket === currentSocket) {
+            this.#roomManager.rejoinRooms()
+          }
+        })
+        .finally(() => {
+          // Always reset flag to allow future reconnect handlers
+          this.#reconnectHandlerInProgress = false
+        })
     })
 
     // Handle reconnection failure
