@@ -55,6 +55,12 @@ export type TransportClientConfig = {
   readonly roomTimeoutMs?: number
   readonly transports?: readonly SocketTransport[]
   /**
+   * Client's working directory. Sent to the server during connection handshake.
+   * Transport-agnostic — the implementation decides how to transmit it
+   * (e.g., Socket.IO query param, WebSocket header, etc.).
+   */
+  readonly cwd?: string
+  /**
    * Advanced Socket.IO client options for custom configurations.
    * These options are merged with defaults and can override them.
    *
@@ -190,6 +196,7 @@ type InternalTransportClientOptions = TransportClientOptions & InternalTestDepen
  */
 type ResolvedConfig = {
   readonly connectTimeoutMs: number
+  readonly cwd?: string
   readonly reconnectionAttempts: number
   readonly reconnectionDelayMs: number
   readonly reconnectionDelayMaxMs: number
@@ -297,6 +304,7 @@ export class TransportClient implements ITransportClient {
     // Deep freeze prevents mutation of nested objects (e.g., socketOptions)
     this.#config = deepFreeze({
       connectTimeoutMs: options?.connectTimeoutMs ?? TRANSPORT_CONNECT_TIMEOUT_MS,
+      cwd: options?.cwd,
       reconnectionAttempts: options?.reconnectionAttempts ?? TRANSPORT_RECONNECTION_ATTEMPTS,
       reconnectionDelayMs: options?.reconnectionDelayMs ?? TRANSPORT_RECONNECTION_DELAY_MS,
       reconnectionDelayMaxMs: options?.reconnectionDelayMaxMs ?? TRANSPORT_RECONNECTION_DELAY_MAX_MS,
@@ -645,6 +653,15 @@ export class TransportClient implements ITransportClient {
       this.#stateManager.setState('connecting')
       this.#initialConnectInProgress = true
 
+      // Build query: merge cwd (first-class) with any user-provided query params
+      const baseQuery: Record<string, string> = {}
+      if (this.#config.cwd) {
+        baseQuery.cwd = this.#config.cwd
+      }
+
+      const userQuery = this.#config.socketOptions?.query
+      const mergedQuery = userQuery ? {...baseQuery, ...userQuery} : baseQuery
+
       this.#socket = io(url, {
         // Default options (can be overridden by user's socketOptions)
         randomizationFactor: 0,
@@ -657,6 +674,9 @@ export class TransportClient implements ITransportClient {
 
         // User-provided options override defaults
         ...this.#config.socketOptions,
+
+        // Merged query (cwd + user query) — applied last to prevent socketOptions.query from clobbering cwd
+        query: mergedQuery,
       })
 
       const onConnect = (): void => {

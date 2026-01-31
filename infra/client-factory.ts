@@ -150,7 +150,7 @@ export class TransportClientFactory implements IClientFactory {
 
     this.log(`Instance discovered: pid=${instance.pid}, port=${instance.port}, projectRoot=${projectRoot}`)
 
-    const client = await this.connectWithRetry(url, instance.port)
+    const client = await this.connectWithRetry(url, instance.port, fromDir)
 
     return Object.freeze({client, projectRoot})
   }
@@ -159,7 +159,7 @@ export class TransportClientFactory implements IClientFactory {
    * Connects to the instance with retry logic.
    * Includes HTTP warm-up to trigger sandbox permission requests.
    */
-  private async connectWithRetry(url: string, port: number): Promise<ITransportClient> {
+  private async connectWithRetry(url: string, port: number, cwd: string): Promise<ITransportClient> {
     let lastError: Error | undefined
 
     // HTTP warm-up for sandbox environments
@@ -172,6 +172,7 @@ export class TransportClientFactory implements IClientFactory {
       const client = new TransportClient({
         logger: this.#logger,
         connectTimeoutMs: this.#connectTimeoutMs,
+        cwd,
       })
 
       try {
