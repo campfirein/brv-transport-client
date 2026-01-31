@@ -27,6 +27,9 @@
 // Constants (for advanced configuration)
 export {
   BRV_DIR,
+  DAEMON_INSTANCE_FILE,
+  HEARTBEAT_FILE,
+  HEARTBEAT_STALE_THRESHOLD_MS,
   INSTANCE_FILE,
   TRANSPORT_CONNECT_TIMEOUT_MS,
   TRANSPORT_DEFAULT_TRANSPORTS,
@@ -276,8 +279,10 @@ export {
 // - getConnectedClient() - Not used by CLI
 // - disconnectClient() - Not used by CLI
 // - SingletonClientManager - Internal implementation detail
+export {DaemonInstanceDiscovery} from './infra/daemon-instance-discovery.js'
 export {FileInstanceDiscovery} from './infra/file-instance-discovery.js'
 export {FileInstanceReader} from './infra/file-instance-reader.js'
+export {getGlobalDataDir} from './infra/global-data-path.js'
 
 // Utilities
 export {isProcessAlive} from './infra/process-utils.js'
