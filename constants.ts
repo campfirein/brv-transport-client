@@ -27,6 +27,6 @@ export const ROOM_MAX_REJOIN_ATTEMPTS = 5 // Max attempts to rejoin a room after
 export const ROOM_REJOIN_BASE_DELAY_MS = 50 // Base delay for exponential backoff (50ms, 100ms, 200ms...)
 
 // Daemon instance discovery constants (XDG global data directory)
-export const DAEMON_INSTANCE_FILE = 'instance.json'
+export const DAEMON_INSTANCE_FILE = 'daemon.json'
 export const HEARTBEAT_FILE = 'heartbeat'
 export const HEARTBEAT_STALE_THRESHOLD_MS = 15_000

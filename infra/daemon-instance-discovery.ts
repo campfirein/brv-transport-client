@@ -13,10 +13,10 @@ import {isProcessAlive} from './process-utils.js'
  *
  * Unlike FileInstanceDiscovery which walks up the directory tree looking for
  * project-local .brv/instance.json, this reads from the global daemon data
- * directory (~/.local/share/brv/instance.json).
+ * directory (~/.local/share/brv/daemon.json).
  *
  * Health checks (all must pass for found=true):
- * 1. instance.json exists and is valid JSON with pid, port, startedAt
+ * 1. daemon.json exists and is valid JSON with pid, port, startedAt
  * 2. Process with recorded PID is alive
  * 3. Heartbeat file exists and timestamp is within threshold (default 15s)
  */
@@ -69,7 +69,7 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
         return undefined
       }
 
-      // Daemon instance.json lacks currentSessionId — default to null
+      // Daemon daemon.json lacks currentSessionId — default to null
       const instanceJson: InstanceInfoJson = {
         ...(json as {pid: number; port: number; startedAt: number}),
         currentSessionId: null,
