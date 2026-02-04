@@ -3,40 +3,34 @@ import type {InstanceInfo} from '../domain/entities/instance-info.js'
 /**
  * Result of instance discovery.
  *
- * - no_instance: No .brv/ directory found in tree
- * - instance_crashed: Found instance.json but pid is dead
+ * - no_instance: No daemon.json found in global data directory
+ * - instance_crashed: Found instance but process (pid) is dead
+ * - instance_stale: Found instance but heartbeat expired
  */
 export type DiscoveryResult =
-  | {found: false; reason: 'instance_crashed' | 'no_instance'}
+  | {found: false; reason: 'instance_crashed' | 'instance_stale' | 'no_instance'}
   | {found: true; instance: InstanceInfo; projectRoot: string}
 
 /**
- * Interface for discovering running instances via walk-up directory search.
+ * Interface for discovering running ByteRover instances.
  *
- * Walk up directory tree to find .brv/instance.json, verify pid alive.
+ * Default implementation: DaemonInstanceDiscovery
+ * Reads from platform-specific global data directory (daemon.json + heartbeat).
  */
 export interface IInstanceDiscovery {
   /**
    * Discovers a running instance starting from the given directory.
    *
-   * Walk-up algorithm:
-   * 1. Start from `fromDir`
-   * 2. Check if .brv/instance.json exists
-   * 3. If yes, verify pid is alive
-   * 4. If no, walk up to parent directory
-   * 5. Repeat until root or found
-   *
-   * @param fromDir - Starting directory (usually cwd)
+   * @param fromDir - Starting directory (usually cwd), used as the client's project context.
    * @returns DiscoveryResult with instance info and project root if found
    */
   discover: (fromDir: string) => Promise<DiscoveryResult>
 
   /**
-   * Finds the project root by walking up from a directory.
-   * Returns the directory containing .brv/ or undefined if not found.
+   * Resolves the project root directory.
    *
    * @param fromDir - Starting directory
-   * @returns Project root path or undefined
+   * @returns Project root path or undefined if not determinable
    */
   findProjectRoot: (fromDir: string) => Promise<string | undefined>
 }

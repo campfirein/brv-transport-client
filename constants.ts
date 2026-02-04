@@ -5,10 +5,6 @@
  * leaf component independence (no dependencies on other brv modules).
  */
 
-// Instance discovery constants
-export const BRV_DIR = '.brv'
-export const INSTANCE_FILE = 'instance.json'
-
 // Transport layer constants (optimized for localhost real-time)
 export const TRANSPORT_HOST = '127.0.0.1'
 export const TRANSPORT_REQUEST_TIMEOUT_MS = 10_000 // 10s - most operations complete quickly
@@ -26,7 +22,8 @@ export const TRANSPORT_DEFAULT_TRANSPORTS = ['websocket'] as const
 export const ROOM_MAX_REJOIN_ATTEMPTS = 5 // Max attempts to rejoin a room after reconnect
 export const ROOM_REJOIN_BASE_DELAY_MS = 50 // Base delay for exponential backoff (50ms, 100ms, 200ms...)
 
-// Daemon instance discovery constants (XDG global data directory)
+// Daemon instance discovery constants (platform-specific global data directory)
+export const GLOBAL_DATA_DIR = 'brv'
 export const DAEMON_INSTANCE_FILE = 'daemon.json'
 export const HEARTBEAT_FILE = 'heartbeat'
 export const HEARTBEAT_STALE_THRESHOLD_MS = 15_000

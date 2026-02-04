@@ -178,6 +178,17 @@ export const AgentEventNames = {
 } as const
 
 // ============================================================================
+// Client Events (client:*)
+//
+// Client identification and registration with the transport server.
+// ============================================================================
+
+export const ClientEventNames = {
+  /** Client registers with server (for tracking and lifecycle management) */
+  REGISTER: 'client:register',
+} as const
+
+// ============================================================================
 // Aggregated Event Names
 //
 // Convenience object containing all event names.
@@ -186,6 +197,7 @@ export const AgentEventNames = {
 export const EventNames = {
   Agent: AgentEventNames,
   Cipher: CipherEventNames,
+  Client: ClientEventNames,
   Llm: LlmEventNames,
   Session: SessionEventNames,
   Task: TaskEventNames,
@@ -230,6 +242,13 @@ export type LlmEventName = (typeof LlmEventNames)[keyof typeof LlmEventNames]
 export type CipherEventName = (typeof CipherEventNames)[keyof typeof CipherEventNames]
 export type SessionEventName = (typeof SessionEventNames)[keyof typeof SessionEventNames]
 export type AgentEventName = (typeof AgentEventNames)[keyof typeof AgentEventNames]
+export type ClientEventName = (typeof ClientEventNames)[keyof typeof ClientEventNames]
 
 /** Union of all event names */
-export type TransportEventName = AgentEventName | CipherEventName | LlmEventName | SessionEventName | TaskEventName
+export type TransportEventName =
+  | AgentEventName
+  | CipherEventName
+  | ClientEventName
+  | LlmEventName
+  | SessionEventName
+  | TaskEventName

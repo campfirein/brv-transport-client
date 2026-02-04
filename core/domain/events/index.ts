@@ -23,6 +23,7 @@
 export {
   AgentEventNames,
   CipherEventNames,
+  ClientEventNames,
   EventNames,
   LlmEventList,
   LlmEventNames,
@@ -32,6 +33,7 @@ export {
   // Type exports for event names
   type AgentEventName,
   type CipherEventName,
+  type ClientEventName,
   type LlmEventName,
   type SessionEventName,
   type TaskEventName,

@@ -52,3 +52,13 @@ export type ClientConfig = {
    */
   transports?: SocketTransport[]
 }
+
+/**
+ * Client types for server identification during registration.
+ * Used to classify connected clients for monitoring and lifecycle management.
+ *
+ * CLIENT_TYPES is the single source of truth — the Zod schema in infra/schemas
+ * derives from this array to guarantee domain and infra stay in sync.
+ */
+export const CLIENT_TYPES = ['cli', 'agent', 'mcp', 'tui', 'extension'] as const
+export type ClientType = (typeof CLIENT_TYPES)[number]

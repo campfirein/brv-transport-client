@@ -1,19 +1,44 @@
-import {homedir} from 'node:os'
+import {homedir, platform} from 'node:os'
 import {join} from 'node:path'
 
+import {GLOBAL_DATA_DIR} from '../constants.js'
+
 /**
- * Returns the global data directory for BRV daemon state.
- *
- * Follows XDG Base Directory Specification:
- * - Linux: $XDG_DATA_HOME/brv or ~/.local/share/brv
- * - macOS: ~/.local/share/brv
+ * Returns the global data directory path following platform conventions:
+ * - Linux: $XDG_DATA_HOME/brv (defaults to ~/.local/share/brv)
+ * - macOS: ~/Library/Application Support/brv
  * - Windows: %LOCALAPPDATA%/brv
+ *
+ * Use this for user data and secrets (not config files).
+ *
+ * @returns Absolute path to the global data directory
  */
-export function getGlobalDataDir(): string {
-  if (process.platform === 'win32') {
-    return join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'brv')
+export const getGlobalDataDir = (): string => {
+  if (process.env.BRV_DATA_DIR) return process.env.BRV_DATA_DIR
+
+  const currentPlatform = platform()
+
+  if (currentPlatform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA
+    if (localAppData !== undefined) {
+      return join(localAppData, GLOBAL_DATA_DIR)
+    }
+
+    return join(homedir(), 'AppData', 'Local', GLOBAL_DATA_DIR)
   }
 
-  // Linux/macOS: XDG_DATA_HOME or ~/.local/share
-  return join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'brv')
+  if (currentPlatform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', GLOBAL_DATA_DIR)
+  }
+
+  // Linux: respect XDG_DATA_HOME if set
+  if (currentPlatform === 'linux') {
+    const xdgDataHome = process.env.XDG_DATA_HOME
+    if (xdgDataHome !== undefined) {
+      return join(xdgDataHome, GLOBAL_DATA_DIR)
+    }
+  }
+
+  // Linux default: ~/.local/share/brv
+  return join(homedir(), '.local', 'share', GLOBAL_DATA_DIR)
 }

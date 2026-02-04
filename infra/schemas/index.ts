@@ -15,12 +15,14 @@ export {
   // Enums and base types
   AgentTerminationReasonSchema,
   ChunkTypeSchema,
+  ClientTypeSchema,
   LogLevelSchema,
   TaskTypeSchema,
   TodoStatusSchema,
   ToolErrorTypeSchema,
   UIEventTypeSchema,
   // Shared structures
+  DaemonInstanceSchema,
   TaskErrorDataSchema,
   TodoItemSchema,
   TokenUsageSchema,
@@ -55,6 +57,9 @@ export {
   CipherStateChangedSchema,
   CipherStateResetSchema,
   CipherUISchema,
+  // Client registration schemas
+  ClientRegisterRequestSchema,
+  ClientRegisterResponseSchema,
   // Session event schemas
   SessionCreateRequestSchema,
   SessionCreateResponseSchema,
@@ -80,12 +85,14 @@ export type {
   // Enum types
   AgentTerminationReason,
   ChunkType,
+  ClientType,
   LogLevel,
   TaskType,
   TodoStatus,
   ToolErrorType,
   UIEventType,
   // Shared structure types
+  DaemonInstance,
   TaskErrorData,
   TodoItem,
   TokenUsage,
@@ -120,6 +127,9 @@ export type {
   CipherStateChanged,
   CipherStateReset,
   CipherUI,
+  // Client registration types
+  ClientRegisterRequest,
+  ClientRegisterResponse,
   // Session event types
   SessionCreateRequest,
   SessionCreateResponse,

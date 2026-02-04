@@ -1,4 +1,5 @@
 import type {ITransportClient} from './i-client.js'
+import type {RegistrationOptions} from './i-client-factory-config.js'
 
 /**
  * Result of connection attempt.
@@ -36,10 +37,11 @@ export interface IClientFactory {
    * Discovers a running instance and connects to it.
    *
    * @param fromDir - Directory to start discovery from (default: cwd)
+   * @param options - Optional registration options (autoRegister defaults to true)
    * @returns Connected client and project root
-   * @throws NoInstanceRunningError - No .brv directory found
+   * @throws NoInstanceRunningError - No daemon instance found
    * @throws InstanceCrashedError - Instance found but process dead
    * @throws ConnectionFailedError - Instance found but connection failed
    */
-  connect(fromDir?: string): Promise<ConnectionResult>
+  connect(fromDir?: string, options?: RegistrationOptions): Promise<ConnectionResult>
 }

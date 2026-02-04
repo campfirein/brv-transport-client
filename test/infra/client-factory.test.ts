@@ -6,12 +6,7 @@ import {tmpdir} from 'node:os'
 
 import {
   TransportClientFactory,
-  createTransportClientFactory,
-  getTransportClientFactory,
   checkServerStatus,
-  getConnectedClient,
-  disconnectClient,
-  resetSingletons,
 } from '../../infra/client-factory.js'
 import {
   ConnectionFailedError,
@@ -20,21 +15,18 @@ import {
 } from '../../core/domain/errors/connection-error.js'
 import type {IInstanceDiscovery} from '../../core/interfaces/i-instance-discovery.js'
 import {InstanceInfo} from '../../core/domain/entities/instance-info.js'
+import {DaemonInstanceDiscovery} from '../../infra/daemon-instance-discovery.js'
+import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../constants.js'
 
 describe('TransportClientFactory', () => {
   let testDir: string
 
   beforeEach(async () => {
-    // Create a unique temp directory for each test
     testDir = await fs.mkdtemp(path.join(tmpdir(), 'client-factory-test-'))
-    // Reset singletons before each test
-    resetSingletons()
   })
 
   afterEach(async () => {
-    // Clean up
     await fs.rm(testDir, {recursive: true, force: true})
-    resetSingletons()
     sinon.restore()
   })
 
@@ -155,56 +147,20 @@ describe('TransportClientFactory', () => {
   })
 })
 
-describe('createTransportClientFactory()', () => {
-  it('should create a new factory instance', () => {
-    const factory = createTransportClientFactory()
-    expect(factory).to.be.instanceOf(TransportClientFactory)
-  })
-
-  it('should create a new instance each time', () => {
-    const factory1 = createTransportClientFactory()
-    const factory2 = createTransportClientFactory()
-    expect(factory1).to.not.equal(factory2)
-  })
-})
-
-describe('getTransportClientFactory()', () => {
-  beforeEach(() => {
-    resetSingletons()
-  })
-
-  afterEach(() => {
-    resetSingletons()
-  })
-
-  it('should return singleton factory', () => {
-    const factory1 = getTransportClientFactory()
-    const factory2 = getTransportClientFactory()
-    expect(factory1).to.equal(factory2)
-  })
-
-  it('should use config only on first call', () => {
-    const factory1 = getTransportClientFactory({maxRetries: 5})
-    const factory2 = getTransportClientFactory({maxRetries: 10}) // This should be ignored
-    expect(factory1).to.equal(factory2)
-  })
-})
-
 describe('checkServerStatus()', () => {
   let testDir: string
 
   beforeEach(async () => {
     testDir = await fs.mkdtemp(path.join(tmpdir(), 'server-status-test-'))
-    resetSingletons()
   })
 
   afterEach(async () => {
     await fs.rm(testDir, {recursive: true, force: true})
-    resetSingletons()
   })
 
-  it('should return not running when no .brv directory', async () => {
-    const status = await checkServerStatus(testDir)
+  it('should return not running when no daemon.json exists', async () => {
+    const discovery = new DaemonInstanceDiscovery({dataDir: testDir})
+    const status = await checkServerStatus(testDir, discovery)
 
     expect(status.running).to.be.false
     if (!status.running) {
@@ -213,19 +169,19 @@ describe('checkServerStatus()', () => {
   })
 
   it('should return instance_crashed when process is dead', async () => {
-    const brvDir = path.join(testDir, '.brv')
-    await fs.mkdir(brvDir, {recursive: true})
     await fs.writeFile(
-      path.join(brvDir, 'instance.json'),
+      path.join(testDir, DAEMON_INSTANCE_FILE),
       JSON.stringify({
         pid: 999999999, // Non-existent PID
         port: 9847,
-        currentSessionId: null,
         startedAt: Date.now(),
       }),
     )
+    // Write fresh heartbeat
+    await fs.writeFile(path.join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
-    const status = await checkServerStatus(testDir)
+    const discovery = new DaemonInstanceDiscovery({dataDir: testDir})
+    const status = await checkServerStatus(testDir, discovery)
 
     expect(status.running).to.be.false
     if (!status.running) {
@@ -234,19 +190,19 @@ describe('checkServerStatus()', () => {
   })
 
   it('should return running when instance is alive', async () => {
-    const brvDir = path.join(testDir, '.brv')
-    await fs.mkdir(brvDir, {recursive: true})
     await fs.writeFile(
-      path.join(brvDir, 'instance.json'),
+      path.join(testDir, DAEMON_INSTANCE_FILE),
       JSON.stringify({
         pid: process.pid, // Current process is alive
         port: 9847,
-        currentSessionId: 'session-123',
         startedAt: Date.now(),
       }),
     )
+    // Write fresh heartbeat
+    await fs.writeFile(path.join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
-    const status = await checkServerStatus(testDir)
+    const discovery = new DaemonInstanceDiscovery({dataDir: testDir})
+    const status = await checkServerStatus(testDir, discovery)
 
     expect(status.running).to.be.true
     if (status.running) {
@@ -256,64 +212,16 @@ describe('checkServerStatus()', () => {
     }
   })
 
-  it('should use cwd as default', async () => {
-    // This will check in cwd which likely doesn't have .brv
-    const status = await checkServerStatus()
-
-    // Just verify it doesn't throw and returns a valid status
-    expect(status).to.have.property('running')
-  })
-})
-
-describe('getConnectedClient()', () => {
-  beforeEach(() => {
-    resetSingletons()
-  })
-
-  afterEach(() => {
-    resetSingletons()
-  })
-
-  it('should throw NoInstanceRunningError when no instance', async () => {
-    try {
-      await getConnectedClient('/nonexistent/path')
-      expect.fail('Should have thrown')
-    } catch (error) {
-      expect(error).to.be.instanceOf(NoInstanceRunningError)
+  it('should accept custom discovery service', async () => {
+    const mockDiscovery: IInstanceDiscovery = {
+      discover: sinon.stub().resolves({found: false, reason: 'no_instance'}),
+      findProjectRoot: async () => undefined,
     }
-  })
-})
 
-describe('disconnectClient()', () => {
-  beforeEach(() => {
-    resetSingletons()
-  })
+    const status = await checkServerStatus(testDir, mockDiscovery)
 
-  afterEach(() => {
-    resetSingletons()
-  })
-
-  it('should resolve without error when no client connected', async () => {
-    await disconnectClient()
-    // Should not throw
-  })
-})
-
-describe('resetSingletons()', () => {
-  it('should clear all singleton instances', () => {
-    // Get singleton to create it
-    getTransportClientFactory()
-
-    // Reset
-    resetSingletons()
-
-    // Get new singleton - should be a different instance
-    const factory1 = getTransportClientFactory()
-    resetSingletons()
-    const factory2 = getTransportClientFactory()
-
-    // They should be different because we reset between calls
-    expect(factory1).to.not.equal(factory2)
+    expect(status.running).to.be.false
+    expect((mockDiscovery.discover as sinon.SinonStub).calledWith(testDir)).to.be.true
   })
 })
 

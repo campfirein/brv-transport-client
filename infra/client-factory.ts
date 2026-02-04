@@ -2,16 +2,25 @@ import type {InstanceInfo} from '../core/domain/entities/instance-info.js'
 import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 import type {ITransportClient} from '../core/interfaces/i-client.js'
 import type {IClientFactory, ConnectionResult} from '../core/interfaces/i-client-factory.js'
-import type {IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
+import type {
+  ConnectOptions,
+  RegistrationOptions,
+  TransportClientFactoryConfig,
+} from '../core/interfaces/i-client-factory-config.js'
+import type {DiscoveryResult, IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
 
 import {
   ConnectionFailedError,
   InstanceCrashedError,
+  InstanceStaleError,
   NoInstanceRunningError,
 } from '../core/domain/errors/connection-error.js'
+import {ClientEventNames} from '../core/domain/events/event-names.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
-import {FileInstanceDiscovery} from './file-instance-discovery.js'
+import {DaemonInstanceDiscovery} from './daemon-instance-discovery.js'
 import {TransportClient} from './socket-io-client.js'
+import type {ClientRegisterRequest, ClientRegisterResponse} from './schemas/types.js'
+import {ClientRegisterResponseSchema} from './schemas/schemas.js'
 
 // ============================================================================
 // Types (Immutable interfaces)
@@ -37,7 +46,7 @@ export type ServerStatusRunning = {
  */
 export type ServerStatusNotRunning = {
   /** Reason why server is not running */
-  readonly reason: 'instance_crashed' | 'no_instance'
+  readonly reason: 'instance_crashed' | 'instance_stale' | 'no_instance'
   /** Server is not running */
   readonly running: false
 }
@@ -47,25 +56,28 @@ export type ServerStatusNotRunning = {
  */
 export type ServerStatus = ServerStatusNotRunning | ServerStatusRunning
 
+// Re-export for backward compatibility
+export type {TransportClientFactoryConfig} from '../core/interfaces/i-client-factory-config.js'
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
 /**
- * Configuration for TransportClientFactory.
- * All properties are optional and readonly.
+ * Maps a DiscoveryResult to a frozen ServerStatus.
  */
-export type TransportClientFactoryConfig = {
-  /** Instance discovery service (DIP - injectable) */
-  readonly discovery?: IInstanceDiscovery
-  /** Logger instance (DIP - injectable) */
-  readonly logger?: IClientLogger
-  /** Maximum retry attempts (default: 8 for sandbox environments) */
-  readonly maxRetries?: number
-  /** Delay between retries in ms (default: 150 for faster sandbox warm-up) */
-  readonly retryDelayMs?: number
-  /** Timeout for HTTP warm-up request in ms (default: 1000) */
-  readonly warmUpTimeoutMs?: number
-  /** Timeout for Socket.IO connect in ms (default: 5000) */
-  readonly connectTimeoutMs?: number
-  /** Delay after warm-up before connecting in ms (default: 100) */
-  readonly warmUpSettleDelayMs?: number
+function toServerStatus(result: DiscoveryResult): ServerStatus {
+  if (!result.found) {
+    return Object.freeze({
+      reason: result.reason,
+      running: false as const,
+    })
+  }
+  return Object.freeze({
+    instance: result.instance,
+    projectRoot: result.projectRoot,
+    running: true as const,
+  })
 }
 
 // ============================================================================
@@ -117,7 +129,7 @@ export class TransportClientFactory implements IClientFactory {
 
   constructor(config?: TransportClientFactoryConfig) {
     // Inject dependencies or use defaults (DIP)
-    this.#discovery = config?.discovery ?? new FileInstanceDiscovery()
+    this.#discovery = config?.discovery ?? new DaemonInstanceDiscovery()
     this.#logger = config?.logger ?? new NoOpClientLogger()
 
     // Configuration with defaults
@@ -132,17 +144,25 @@ export class TransportClientFactory implements IClientFactory {
    * Discovers a running instance and connects to it.
    *
    * @param fromDir - Directory to start discovery from (default: cwd)
+   * @param options - Optional registration options (autoRegister defaults to true)
    * @returns Connected client and project root
-   * @throws NoInstanceRunningError - No .brv directory found
+   * @throws NoInstanceRunningError - No daemon instance found
    * @throws InstanceCrashedError - Instance found but process dead
+   * @throws InstanceStaleError - Instance found but heartbeat expired
    * @throws ConnectionFailedError - Instance found but connection failed
    */
-  public async connect(fromDir: string = process.cwd()): Promise<ConnectionResult> {
+  public async connect(fromDir: string = process.cwd(), options?: RegistrationOptions): Promise<ConnectionResult> {
     this.log(`Discovering instance from ${fromDir}`)
     const result = await this.#discovery.discover(fromDir)
 
     if (!result.found) {
-      throw result.reason === 'instance_crashed' ? new InstanceCrashedError() : new NoInstanceRunningError()
+      if (result.reason === 'instance_crashed') {
+        throw new InstanceCrashedError()
+      }
+      if (result.reason === 'instance_stale') {
+        throw new InstanceStaleError()
+      }
+      throw new NoInstanceRunningError()
     }
 
     const {instance, projectRoot} = result
@@ -151,6 +171,17 @@ export class TransportClientFactory implements IClientFactory {
     this.log(`Instance discovered: pid=${instance.pid}, port=${instance.port}, projectRoot=${projectRoot}`)
 
     const client = await this.connectWithRetry(url, instance.port, fromDir)
+
+    // Auto-registration after successful connection (non-fatal)
+    await this.performRegistration(client, options)
+
+    // Join requested rooms after registration (e.g., broadcast-room for TUI)
+    if (options?.joinRooms?.length) {
+      for (const room of options.joinRooms) {
+        this.log(`Joining room: ${room}`)
+        await client.joinRoom(room)
+      }
+    }
 
     return Object.freeze({client, projectRoot})
   }
@@ -276,6 +307,54 @@ export class TransportClientFactory implements IClientFactory {
   }
 
   /**
+   * Performs client registration after successful connection (non-fatal).
+   * Registration failures are logged but never thrown - connection remains usable.
+   *
+   * @param client - Connected transport client
+   * @param options - Registration options (autoRegister defaults to true)
+   */
+  private async performRegistration(client: ITransportClient, options?: RegistrationOptions): Promise<void> {
+    // Default: autoRegister = true
+    const shouldRegister = options?.autoRegister ?? true
+    if (!shouldRegister) {
+      this.log('Registration skipped (autoRegister=false)')
+      return
+    }
+
+    const clientType = options?.clientType ?? 'cli'
+    const payload: ClientRegisterRequest = {
+      clientType,
+      ...(options?.projectPath && {projectPath: options.projectPath}),
+    }
+
+    try {
+      this.log(`Registering as ${clientType}${options?.projectPath ? ` (project=${options.projectPath})` : ''}`)
+
+      const response = await client.requestWithAck<ClientRegisterResponse>(ClientEventNames.REGISTER, payload, {
+        timeout: 3000,
+      })
+
+      // Validate response with Zod
+      const validated = ClientRegisterResponseSchema.safeParse(response)
+      if (!validated.success) {
+        this.log(`Registration response validation failed: ${validated.error.message}`)
+        return
+      }
+
+      if (!validated.data.success) {
+        this.log(`Registration failed: ${validated.data.error ?? 'Unknown error'}`)
+        return
+      }
+
+      this.log('Registration successful')
+    } catch (error) {
+      // Non-fatal: registration failure doesn't prevent usage
+      const message = error instanceof Error ? error.message : String(error)
+      this.log(`Registration error (non-fatal): ${message}`)
+    }
+  }
+
+  /**
    * Logs a debug message.
    */
   private log(message: string): void {
@@ -284,292 +363,83 @@ export class TransportClientFactory implements IClientFactory {
 }
 
 // ============================================================================
-// Singleton Client Manager (Encapsulated Global State)
+// Public API Functions
 // ============================================================================
-
-/**
- * Manages singleton instances for transport client.
- * Encapsulates global state following OOP principles.
- *
- * @remarks
- * This class provides explicit dependency management instead of hidden module-level state.
- * - All state is encapsulated within the class instance
- * - Supports multiple instances for testing scenarios
- * - Thread-safe connection management via promise deduplication
- *
- * @example
- * ```typescript
- * // Default singleton usage
- * const manager = SingletonClientManager.getInstance()
- * const { client } = await manager.getConnectedClient()
- *
- * // Testing with isolated instance
- * const testManager = new SingletonClientManager()
- * testManager.reset()
- * ```
- */
-export class SingletonClientManager {
-  static #instance: SingletonClientManager | undefined
-
-  #factory: TransportClientFactory | undefined
-  #discovery: IInstanceDiscovery | undefined
-  #cachedConnection: ConnectionResult | undefined
-  #connectingPromise: Promise<ConnectionResult> | undefined
-  readonly #factoryConfig: TransportClientFactoryConfig | undefined
-
-  /**
-   * Creates a new singleton manager instance.
-   * @param factoryConfig - Optional configuration for the factory
-   */
-  public constructor(factoryConfig?: TransportClientFactoryConfig) {
-    this.#factoryConfig = factoryConfig
-  }
-
-  /**
-   * Gets the global singleton instance.
-   * Creates one if it doesn't exist.
-   */
-  public static getInstance(): SingletonClientManager {
-    if (!SingletonClientManager.#instance) {
-      SingletonClientManager.#instance = new SingletonClientManager()
-    }
-    return SingletonClientManager.#instance
-  }
-
-  /**
-   * Resets the global singleton instance.
-   * Primarily for testing.
-   */
-  public static resetInstance(): void {
-    SingletonClientManager.#instance = undefined
-  }
-
-  /**
-   * Gets or creates the singleton factory.
-   * @param config - Configuration (only used on first call)
-   */
-  public getFactory(config?: TransportClientFactoryConfig): TransportClientFactory {
-    if (!this.#factory) {
-      this.#factory = new TransportClientFactory(config ?? this.#factoryConfig)
-    }
-    return this.#factory
-  }
-
-  /**
-   * Gets or creates the singleton discovery.
-   */
-  public getDiscovery(): IInstanceDiscovery {
-    if (!this.#discovery) {
-      this.#discovery = new FileInstanceDiscovery()
-    }
-    return this.#discovery
-  }
-
-  /**
-   * Gets the singleton connected client, connecting if necessary.
-   * Thread-safe: concurrent calls share the same connection attempt.
-   *
-   * @param fromDir - Directory to start discovery from (default: cwd)
-   * @returns Connected client and project root
-   * @throws NoInstanceRunningError - No .brv directory found
-   * @throws InstanceCrashedError - Instance found but process dead
-   * @throws ConnectionFailedError - Instance found but connection failed
-   */
-  public async getConnectedClient(fromDir: string = process.cwd()): Promise<ConnectionResult> {
-    // Return cached if connected
-    if (this.#cachedConnection?.client.getState() === 'connected') {
-      return this.#cachedConnection
-    }
-
-    // Wait for in-progress connection (race condition prevention)
-    if (this.#connectingPromise) {
-      return this.#connectingPromise
-    }
-
-    // Start new connection
-    this.#connectingPromise = (async () => {
-      try {
-        this.#cachedConnection = undefined
-        const factory = this.getFactory()
-        this.#cachedConnection = await factory.connect(fromDir)
-        return this.#cachedConnection
-      } finally {
-        this.#connectingPromise = undefined
-      }
-    })()
-
-    return this.#connectingPromise
-  }
-
-  /**
-   * Disconnects and clears the singleton client.
-   */
-  public async disconnectClient(): Promise<void> {
-    if (this.#cachedConnection) {
-      await this.#cachedConnection.client.disconnect()
-      this.#cachedConnection = undefined
-    }
-  }
-
-  /**
-   * Checks if the transport server is running without attempting to connect.
-   * Non-throwing alternative to connect().
-   *
-   * @param fromDir - Directory to start discovery from (default: cwd)
-   * @returns ServerStatus indicating whether server is running and why if not
-   */
-  public async checkServerStatus(fromDir: string = process.cwd()): Promise<ServerStatus> {
-    const discovery = this.getDiscovery()
-    const result = await discovery.discover(fromDir)
-
-    if (!result.found) {
-      return Object.freeze({
-        reason: result.reason === 'instance_crashed' ? 'instance_crashed' : 'no_instance',
-        running: false as const,
-      })
-    }
-
-    return Object.freeze({
-      instance: result.instance,
-      projectRoot: result.projectRoot,
-      running: true as const,
-    })
-  }
-
-  /**
-   * Resets all singleton state.
-   * Primarily for testing.
-   */
-  public reset(): void {
-    this.#cachedConnection = undefined
-    this.#connectingPromise = undefined
-    this.#factory = undefined
-    this.#discovery = undefined
-  }
-
-  /**
-   * Gets the cached connection if available.
-   * Returns undefined if not connected.
-   */
-  public get cachedConnection(): ConnectionResult | undefined {
-    return this.#cachedConnection
-  }
-
-  /**
-   * Checks if a connection attempt is in progress.
-   */
-  public get isConnecting(): boolean {
-    return this.#connectingPromise !== undefined
-  }
-}
-
-// ============================================================================
-// Backward-Compatible Module Functions
-// ============================================================================
-
-/**
- * Gets or creates the singleton factory.
- * @param config - Configuration (only used on first call)
- */
-export function getTransportClientFactory(config?: TransportClientFactoryConfig): TransportClientFactory {
-  return SingletonClientManager.getInstance().getFactory(config)
-}
-
-/**
- * Creates a new factory instance (non-singleton).
- * @deprecated Use connectToTransport() for simpler API
- */
-export function createTransportClientFactory(config?: TransportClientFactoryConfig): TransportClientFactory {
-  return new TransportClientFactory(config)
-}
 
 /**
  * Connects to ByteRover transport server (simplified API).
- * Auto-discovers .brv directory by walking up from fromDir.
+ * Discovers daemon instance from global data directory.
+ * Auto-registers client by default (set autoRegister: false to opt-out).
  *
- * @param fromDir - Directory to start discovery from (default: cwd)
- * @param config - Optional factory configuration
+ * @param fromDir - Directory to use as project context (default: cwd)
+ * @param options - Optional connection and registration options
  * @returns Connected client and project root
- * @throws NoInstanceRunningError - No .brv directory found
+ * @throws NoInstanceRunningError - No daemon instance found
  * @throws InstanceCrashedError - Instance found but process dead
+ * @throws InstanceStaleError - Instance found but heartbeat expired
  * @throws ConnectionFailedError - Instance found but connection failed
  *
  * @example
  * ```typescript
- * // Simple connection
+ * // Simple connection (auto-registers as 'cli')
  * const {client, projectRoot} = await connectToTransport()
  *
- * // With custom directory
- * const {client} = await connectToTransport('/path/to/project')
+ * // With custom client type
+ * const {client} = await connectToTransport(undefined, { clientType: 'tui' })
  *
- * // With custom config
- * const {client} = await connectToTransport(undefined, { logger: myLogger })
+ * // Debug command (opt-out of registration)
+ * const {client} = await connectToTransport(undefined, { autoRegister: false })
+ *
+ * // With factory config + registration
+ * const {client} = await connectToTransport(undefined, {
+ *   logger: myLogger,
+ *   maxRetries: 5,
+ *   clientType: 'agent'
+ * })
  * ```
  */
-export async function connectToTransport(
-  fromDir?: string,
-  config?: TransportClientFactoryConfig,
-): Promise<ConnectionResult> {
-  const factory = new TransportClientFactory(config)
-  return factory.connect(fromDir)
+export async function connectToTransport(fromDir?: string, options?: ConnectOptions): Promise<ConnectionResult> {
+  const {
+    // Extract registration options
+    autoRegister,
+    clientType,
+    joinRooms,
+    projectPath,
+    // Rest are factory config
+    ...factoryConfig
+  } = options ?? {}
+
+  const factory = new TransportClientFactory(factoryConfig)
+
+  // Pass registration options separately
+  const registrationOptions = {autoRegister, clientType, joinRooms, projectPath}
+
+  return factory.connect(fromDir, registrationOptions)
 }
 
 /**
  * Checks if the transport server is running without attempting to connect.
  * Non-throwing alternative to connectToTransport().
  *
- * @param fromDir - Directory to start discovery from (default: cwd)
+ * @param fromDir - Directory to use as project context (default: cwd)
+ * @param discovery - Optional instance discovery service (default: DaemonInstanceDiscovery)
  * @returns ServerStatus indicating whether server is running and why if not
  *
  * @example
  * ```typescript
  * const status = await checkServerStatus()
  * if (status.running) {
- *   const { client } = await getConnectedClient()
+ *   const { client } = await connectToTransport()
  * } else {
  *   console.log(`Server not running: ${status.reason}`)
  * }
  * ```
  */
-export async function checkServerStatus(fromDir: string = process.cwd()): Promise<ServerStatus> {
-  return SingletonClientManager.getInstance().checkServerStatus(fromDir)
-}
-
-/**
- * Gets the singleton connected client, connecting if necessary.
- * Thread-safe: concurrent calls share the same connection attempt.
- *
- * @param fromDir - Directory to start discovery from (default: cwd)
- * @returns Connected client and project root
- * @throws NoInstanceRunningError - No .brv directory found
- * @throws InstanceCrashedError - Instance found but process dead
- * @throws ConnectionFailedError - Instance found but connection failed
- *
- * @example
- * ```typescript
- * // Concurrent calls share the same connection
- * const [result1, result2] = await Promise.all([
- *   getConnectedClient(),
- *   getConnectedClient(),
- * ])
- * console.log(result1.client === result2.client) // true
- * ```
- */
-export async function getConnectedClient(fromDir: string = process.cwd()): Promise<ConnectionResult> {
-  return SingletonClientManager.getInstance().getConnectedClient(fromDir)
-}
-
-/**
- * Disconnects and clears the singleton client.
- */
-export async function disconnectClient(): Promise<void> {
-  return SingletonClientManager.getInstance().disconnectClient()
-}
-
-/**
- * Resets all singleton instances. Primarily for testing.
- */
-export function resetSingletons(): void {
-  SingletonClientManager.getInstance().reset()
-  SingletonClientManager.resetInstance()
+export async function checkServerStatus(
+  fromDir: string = process.cwd(),
+  discovery?: IInstanceDiscovery,
+): Promise<ServerStatus> {
+  const disc = discovery ?? new DaemonInstanceDiscovery()
+  const result = await disc.discover(fromDir)
+  return toServerStatus(result)
 }

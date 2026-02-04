@@ -28,6 +28,20 @@ export class NoInstanceRunningError extends ConnectionError {
 }
 
 /**
+ * Error thrown when daemon instance is found but its heartbeat is stale.
+ * This indicates the daemon process may be hung or stopped writing heartbeats.
+ */
+export class InstanceStaleError extends ConnectionError {
+  public constructor()
+  public constructor(options: {message: string})
+  public constructor(options?: {message: string}) {
+    const defaultMessage = 'ByteRover daemon instance is stale (heartbeat expired). Please restart with: brv'
+    super(options?.message ?? defaultMessage)
+    this.name = 'InstanceStaleError'
+  }
+}
+
+/**
  * Error thrown when instance is found but process has crashed.
  */
 export class InstanceCrashedError extends ConnectionError {

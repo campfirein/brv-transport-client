@@ -2,18 +2,20 @@ import {readFile} from 'node:fs/promises'
 import {join} from 'node:path'
 
 import type {DiscoveryResult, IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
+import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 
 import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE, HEARTBEAT_STALE_THRESHOLD_MS} from '../constants.js'
 import {InstanceInfo, type InstanceInfoJson} from '../core/domain/entities/instance-info.js'
 import {getGlobalDataDir} from './global-data-path.js'
 import {isProcessAlive} from './process-utils.js'
+import {NoOpClientLogger} from './no-op-client-logger.js'
+import {DaemonInstanceSchema} from './schemas/schemas.js'
 
 /**
- * Daemon-based implementation of IInstanceDiscovery.
+ * Default implementation of IInstanceDiscovery.
  *
- * Unlike FileInstanceDiscovery which walks up the directory tree looking for
- * project-local .brv/instance.json, this reads from the global daemon data
- * directory (~/.local/share/brv/daemon.json).
+ * Reads from the platform-specific global data directory (see getGlobalDataDir()).
+ * Single daemon per machine — no project-local discovery.
  *
  * Health checks (all must pass for found=true):
  * 1. daemon.json exists and is valid JSON with pid, port, startedAt
@@ -23,10 +25,12 @@ import {isProcessAlive} from './process-utils.js'
 export class DaemonInstanceDiscovery implements IInstanceDiscovery {
   readonly #dataDir: string
   readonly #heartbeatThresholdMs: number
+  readonly #logger: IClientLogger
 
-  constructor(options?: {dataDir?: string; heartbeatThresholdMs?: number}) {
+  constructor(options?: {dataDir?: string; heartbeatThresholdMs?: number; logger?: IClientLogger}) {
     this.#dataDir = options?.dataDir ?? getGlobalDataDir()
     this.#heartbeatThresholdMs = options?.heartbeatThresholdMs ?? HEARTBEAT_STALE_THRESHOLD_MS
+    this.#logger = options?.logger ?? new NoOpClientLogger()
   }
 
   async discover(fromDir: string): Promise<DiscoveryResult> {
@@ -36,12 +40,12 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
     }
 
     if (!isProcessAlive(instance.pid)) {
-      return {found: false, reason: 'no_instance'}
+      return {found: false, reason: 'instance_crashed'}
     }
 
     const heartbeatFresh = await this.#isHeartbeatFresh()
     if (!heartbeatFresh) {
-      return {found: false, reason: 'no_instance'}
+      return {found: false, reason: 'instance_stale'}
     }
 
     return {
@@ -52,7 +56,14 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
   }
 
   /**
-   * Daemon is global — projectRoot is the caller's directory.
+   * Returns the caller's directory as "project root" for global daemon.
+   *
+   * Note: The daemon is global (single per machine) and treats the caller's directory
+   * as the project context. The "project root" is whichever directory the client is
+   * operating from.
+   *
+   * @param fromDir - Caller's directory
+   * @returns Always returns fromDir (daemon is global, not project-local)
    */
   async findProjectRoot(fromDir: string): Promise<string | undefined> {
     return fromDir
@@ -65,18 +76,36 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       const content = await readFile(filePath, 'utf8')
       const json: unknown = JSON.parse(content)
 
-      if (!this.#isValidDaemonJson(json)) {
+      // Use Zod schema for validation instead of manual type guard
+      const parsed = DaemonInstanceSchema.safeParse(json)
+      if (!parsed.success) {
+        this.#logger.debug(`Invalid daemon.json schema: ${parsed.error.message}`)
         return undefined
       }
 
       // Daemon daemon.json lacks currentSessionId — default to null
       const instanceJson: InstanceInfoJson = {
-        ...(json as {pid: number; port: number; startedAt: number}),
+        ...parsed.data,
         currentSessionId: null,
       }
 
       return InstanceInfo.fromJson(instanceJson)
-    } catch {
+    } catch (error) {
+      // Log specific error types for debugging
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as {code?: string}).code
+        if (code === 'ENOENT') {
+          this.#logger.debug('Daemon instance file not found')
+        } else if (code === 'EACCES') {
+          this.#logger.warn(`Permission denied reading daemon instance: ${filePath}`)
+        } else {
+          this.#logger.error(`Failed to read daemon instance: ${error}`)
+        }
+      } else if (error instanceof SyntaxError) {
+        this.#logger.error(`Invalid JSON in daemon.json: ${error.message}`)
+      } else {
+        this.#logger.error(`Failed to read daemon instance: ${error}`)
+      }
       return undefined
     }
   }
@@ -89,27 +118,27 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       const timestamp = Number(content.trim())
 
       if (!Number.isFinite(timestamp) || timestamp <= 0) {
+        this.#logger.debug('Invalid heartbeat timestamp (not a valid number)')
         return false
       }
 
       const age = Date.now() - timestamp
       return age >= 0 && age < this.#heartbeatThresholdMs
-    } catch {
+    } catch (error) {
+      // Log specific error types for debugging
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as {code?: string}).code
+        if (code === 'ENOENT') {
+          this.#logger.debug('Heartbeat file not found')
+        } else if (code === 'EACCES') {
+          this.#logger.warn(`Permission denied reading heartbeat: ${heartbeatPath}`)
+        } else {
+          this.#logger.error(`Failed to read heartbeat: ${error}`)
+        }
+      } else {
+        this.#logger.error(`Failed to read heartbeat: ${error}`)
+      }
       return false
     }
-  }
-
-  #isValidDaemonJson(value: unknown): value is {pid: number; port: number; startedAt: number} {
-    if (typeof value !== 'object' || value === null) {
-      return false
-    }
-
-    const obj = value as Record<string, unknown>
-
-    return (
-      typeof obj.pid === 'number' &&
-      typeof obj.port === 'number' &&
-      typeof obj.startedAt === 'number'
-    )
   }
 }

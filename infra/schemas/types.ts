@@ -21,12 +21,14 @@ import {
   // Enums and base types
   AgentTerminationReasonSchema,
   ChunkTypeSchema,
+  ClientTypeSchema,
   LogLevelSchema,
   TaskTypeSchema,
   TodoStatusSchema,
   ToolErrorTypeSchema,
   UIEventTypeSchema,
   // Shared structures
+  DaemonInstanceSchema,
   TaskErrorDataSchema,
   TodoItemSchema,
   TokenUsageSchema,
@@ -79,6 +81,9 @@ import {
   AgentRestartRequestSchema,
   AgentRestartResponseSchema,
   AgentStatusSchema,
+  // Client registration
+  ClientRegisterRequestSchema,
+  ClientRegisterResponseSchema,
 } from './schemas.js'
 
 // ============================================================================
@@ -109,9 +114,15 @@ export type ToolErrorType = z.infer<typeof ToolErrorTypeSchema>
 /** Reasons for agent execution termination */
 export type AgentTerminationReason = z.infer<typeof AgentTerminationReasonSchema>
 
+/** Client types for registration */
+export type ClientType = z.infer<typeof ClientTypeSchema>
+
 // ============================================================================
 // Shared Structure Types
 // ============================================================================
+
+/** Daemon instance info for global daemon discovery */
+export type DaemonInstance = z.infer<typeof DaemonInstanceSchema>
 
 /** Todo item structure */
 export type TodoItem = z.infer<typeof TodoItemSchema>
@@ -272,6 +283,16 @@ export type AgentNewSessionResponse = z.infer<typeof AgentNewSessionResponseSche
 export type AgentStatus = z.infer<typeof AgentStatusSchema>
 
 // ============================================================================
+// Client Registration Types (client:*)
+// ============================================================================
+
+/** client:register request */
+export type ClientRegisterRequest = z.infer<typeof ClientRegisterRequestSchema>
+
+/** client:register response */
+export type ClientRegisterResponse = z.infer<typeof ClientRegisterResponseSchema>
+
+// ============================================================================
 // Event Maps (for typed event handlers)
 // ============================================================================
 
@@ -345,6 +366,7 @@ export type TransportEventPayloadMap = TaskEventPayloadMap &
 export type RequestResponseMap = {
   'agent:newSession': {request: AgentNewSessionRequest; response: AgentNewSessionResponse}
   'agent:restart': {request: AgentRestartRequest; response: AgentRestartResponse}
+  'client:register': {request: ClientRegisterRequest; response: ClientRegisterResponse}
   'session:create': {request: SessionCreateRequest; response: SessionCreateResponse}
   'session:info': {request: SessionInfoRequest; response: SessionInfoResponse}
   'session:list': {request: SessionListRequest; response: SessionListResponse}

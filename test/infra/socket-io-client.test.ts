@@ -313,50 +313,6 @@ describe('TransportClient - Configuration', () => {
   })
 })
 
-describe('TransportClient - ADR-006: Connection ID Tracking', () => {
-  it('should increment connection ID on each connect attempt', () => {
-    const client = new TransportClient()
-
-    // Access via internal testing - verify connection ID increments
-    // This test verifies the connection ID pattern exists and increments
-    expect(client).to.be.instanceOf(TransportClient)
-  })
-
-  it('should ignore connect events from superseded connections', async () => {
-    const client = new TransportClient()
-    const stateChangeSpy = sinon.spy()
-
-    client.onStateChange(stateChangeSpy)
-
-    // Simulate rapid connect/disconnect scenario
-    // The connection ID logic should prevent stale events from being processed
-
-    // Verify initial state
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should ignore connect_error events from superseded connections', () => {
-    const client = new TransportClient()
-
-    // Connection ID should prevent stale connect_error from affecting state
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should handle disconnect events only from current socket', () => {
-    const client = new TransportClient()
-
-    // Verify socket reference check prevents stale disconnect events
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should handle reconnect events only from current socket', () => {
-    const client = new TransportClient()
-
-    // Verify reconnect event filtering by socket reference
-    expect(client.getState()).to.equal('disconnected')
-  })
-})
-
 describe('TransportClient - ADR-007: Promise Mutex', () => {
   it('should deduplicate concurrent connect() calls to same URL', async () => {
     const client = new TransportClient()

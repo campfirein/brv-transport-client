@@ -19,6 +19,8 @@
  */
 import {z} from 'zod'
 
+import {CLIENT_TYPES} from '../../core/domain/types.js'
+
 // ============================================================================
 // Common Enums and Base Types
 // ============================================================================
@@ -110,6 +112,24 @@ export const TaskErrorDataSchema = z.object({
   code: z.string().optional(),
   details: z.record(z.unknown()).optional(),
 })
+
+/**
+ * Daemon instance info schema for global daemon discovery.
+ * Validates daemon.json structure for DaemonInstanceDiscovery.
+ *
+ * Required fields:
+ * - pid: Process ID of daemon (positive integer)
+ * - port: Transport server port (1024-65535)
+ * - startedAt: Unix timestamp in milliseconds (positive integer)
+ *
+ * Note: Uses .strict() to reject unknown fields (defense in depth).
+ */
+export const DaemonInstanceSchema = z.object({
+  pid: z.number().int().positive(),
+  port: z.number().int().min(1024).max(65535),
+  startedAt: z.number().int().positive(),
+  version: z.string().optional(),
+}).strict()
 
 // ============================================================================
 // Task Event Payloads (task:*)
@@ -533,4 +553,30 @@ export const AgentStatusSchema = z.object({
   activeTasks: z.number().int().nonnegative(),
   queuedTasks: z.number().int().nonnegative(),
   lastError: z.string().optional(),
+})
+
+// ============================================================================
+// Client Registration Payloads (client:*)
+// ============================================================================
+
+/**
+ * Client type for registration.
+ * Derives from CLIENT_TYPES in domain layer (single source of truth).
+ */
+export const ClientTypeSchema = z.enum(CLIENT_TYPES)
+
+/**
+ * client:register request
+ */
+export const ClientRegisterRequestSchema = z.object({
+  clientType: ClientTypeSchema,
+  projectPath: z.string().optional(),
+})
+
+/**
+ * client:register response
+ */
+export const ClientRegisterResponseSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
 })

@@ -182,7 +182,7 @@ export type InternalTestDependencies = {
 
 /**
  * Internal options type that includes test dependencies.
- * Used only within constructor - not exported.
+ * Used only within constructor via type assertion - not part of public API.
  * @internal
  */
 type InternalTransportClientOptions = TransportClientOptions & InternalTestDependencies
@@ -282,7 +282,7 @@ export class TransportClient implements ITransportClient {
   // Callbacks for observability
   readonly #onHandlersCleared?: (pendingCount: number, persistentCount: number) => void
 
-  constructor(options?: InternalTransportClientOptions) {
+  constructor(options?: TransportClientOptions) {
     // Validate timeout options if provided
     if (options?.connectTimeoutMs !== undefined) {
       this.validateTimeout(options.connectTimeoutMs, 'connectTimeoutMs')
@@ -329,17 +329,19 @@ export class TransportClient implements ITransportClient {
     }
 
     // Use injected components or create defaults
-    // Injection is primarily for testing purposes
-    this.#stateManager = options?.stateManager ?? new ConnectionStateManager({logger: this.#logger})
+    // Injection is for testing only — cast to internal type to access test deps
+    // The public constructor signature hides these fields from consumers
+    const internalOpts = options as InternalTransportClientOptions | undefined
+    this.#stateManager = internalOpts?.stateManager ?? new ConnectionStateManager({logger: this.#logger})
     this.#eventDispatcher =
-      options?.eventDispatcher ??
+      internalOpts?.eventDispatcher ??
       new EventDispatcher({
         logger: this.#logger,
         socketProvider: internalSocketProvider,
         onHandlerError: options?.onHandlerError,
       })
     this.#roomManager =
-      options?.roomManager ??
+      internalOpts?.roomManager ??
       new RoomManager({
         logger: this.#logger,
         roomTimeoutMs: this.#config.roomTimeoutMs,
@@ -457,36 +459,32 @@ export class TransportClient implements ITransportClient {
       return
     }
 
-    return new Promise((resolve) => {
-      // Socket.IO handles its own internal listeners - we only clear application listeners
-      // via EventDispatcher.clearAllHandlers() and RoomManager.clearRooms() below
-      socket.disconnect()
+    // Socket.IO handles its own internal listeners - we only clear application listeners
+    // via EventDispatcher.clearAllHandlers() and RoomManager.clearRooms() below
+    socket.disconnect()
 
-      // Reset state
-      this.#socket = undefined
-      this.#stateManager.setState('disconnected')
+    // Reset state
+    this.#socket = undefined
+    this.#stateManager.setState('disconnected')
 
-      // Capture handler counts before clearing for notification
-      const pendingCount = this.#eventDispatcher.pendingOnceHandlerCount
-      const persistentCount = this.#eventDispatcher.getEventCount()
+    // Capture handler counts before clearing for notification
+    const pendingCount = this.#eventDispatcher.pendingOnceHandlerCount
+    const persistentCount = this.#eventDispatcher.getEventCount()
 
-      // Clear component state
-      this.#eventDispatcher.clearAllHandlers()
-      this.#roomManager.clearRooms()
-      this.#persistentHandlersRegistered = false
+    // Clear component state
+    this.#eventDispatcher.clearAllHandlers()
+    this.#roomManager.clearRooms()
+    this.#persistentHandlersRegistered = false
 
-      // Notify if handlers were dropped
-      if ((pendingCount > 0 || persistentCount > 0) && this.#onHandlersCleared) {
-        try {
-          this.#onHandlersCleared(pendingCount, persistentCount)
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error)
-          this.log(`onHandlersCleared callback threw: ${errMsg}`)
-        }
+    // Notify if handlers were dropped
+    if ((pendingCount > 0 || persistentCount > 0) && this.#onHandlersCleared) {
+      try {
+        this.#onHandlersCleared(pendingCount, persistentCount)
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error)
+        this.log(`onHandlersCleared callback threw: ${errMsg}`)
       }
-
-      resolve()
-    })
+    }
   }
 
   public getState(): ConnectionState {
@@ -653,7 +651,8 @@ export class TransportClient implements ITransportClient {
       this.#stateManager.setState('connecting')
       this.#initialConnectInProgress = true
 
-      // Build query: merge cwd (first-class) with any user-provided query params
+      // Build query: merge cwd (default) with user-provided query params
+      // Note: userQuery can override cwd for advanced use cases (e.g., MCP server handling specific projects)
       const baseQuery: Record<string, string> = {}
       if (this.#config.cwd) {
         baseQuery.cwd = this.#config.cwd
@@ -675,7 +674,7 @@ export class TransportClient implements ITransportClient {
         // User-provided options override defaults
         ...this.#config.socketOptions,
 
-        // Merged query (cwd + user query) — applied last to prevent socketOptions.query from clobbering cwd
+        // Merged query (cwd + user query) — applied last to ensure query is set correctly
         query: mergedQuery,
       })
 

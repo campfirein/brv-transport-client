@@ -7,14 +7,13 @@
  * @example
  * ```typescript
  * import {
- *   createTransportClientFactory,
+ *   connectToTransport,
  *   NoInstanceRunningError,
  *   ConnectionFailedError
  * } from '@campfirein/brv-transport-client'
  *
- * const factory = createTransportClientFactory()
  * try {
- *   const { client, projectRoot } = await factory.connect()
+ *   const { client, projectRoot } = await connectToTransport()
  *   // Use the connected client...
  * } catch (error) {
  *   if (error instanceof NoInstanceRunningError) {
@@ -26,11 +25,10 @@
 
 // Constants (for advanced configuration)
 export {
-  BRV_DIR,
   DAEMON_INSTANCE_FILE,
+  GLOBAL_DATA_DIR,
   HEARTBEAT_FILE,
   HEARTBEAT_STALE_THRESHOLD_MS,
-  INSTANCE_FILE,
   TRANSPORT_CONNECT_TIMEOUT_MS,
   TRANSPORT_DEFAULT_TRANSPORTS,
   TRANSPORT_HOST,
@@ -49,6 +47,7 @@ export {
   ConnectionFailedError,
   ConnectionTimeoutError,
   InstanceCrashedError,
+  InstanceStaleError,
   InvalidInstanceDataError,
   NoInstanceRunningError,
 } from './core/domain/errors/connection-error.js'
@@ -81,6 +80,7 @@ export {
   // Event name constants
   AgentEventNames,
   CipherEventNames,
+  ClientEventNames,
   EventNames,
   LlmEventList,
   LlmEventNames,
@@ -90,6 +90,7 @@ export {
   // Event name types
   type AgentEventName,
   type CipherEventName,
+  type ClientEventName,
   type LlmEventName,
   type SessionEventName,
   type TaskEventName,
@@ -109,7 +110,11 @@ export {
   AgentTerminationReasonSchema,
   ChunkTypeSchema,
   CipherConversationResetSchema,
+  ClientRegisterRequestSchema,
+  ClientRegisterResponseSchema,
+  ClientTypeSchema,
   CipherExecutionStartedSchema,
+  DaemonInstanceSchema,
   CipherExecutionTerminatedSchema,
   CipherLogSchema,
   CipherStateChangedSchema,
@@ -167,11 +172,17 @@ export type {
   // Enum types
   AgentTerminationReason,
   ChunkType,
+  ClientType,
   // Cipher event types
   CipherConversationReset,
+  // Daemon types
+  DaemonInstance,
   // Event maps (for typed handlers)
   CipherEventPayloadMap,
   CipherExecutionStarted,
+  // Client registration types
+  ClientRegisterRequest,
+  ClientRegisterResponse,
   CipherExecutionTerminated,
   CipherLog,
   CipherStateChanged,
@@ -253,10 +264,14 @@ export type {IWakeDetector, WakeHandler} from './core/interfaces/i-wake-detector
 
 // Core interfaces - Discovery
 export type {DiscoveryResult, IInstanceDiscovery} from './core/interfaces/i-instance-discovery.js'
-export type {IInstanceReader} from './core/interfaces/i-instance-reader.js'
 
 // Core interfaces - Factory
 export type {IClientFactory, ConnectionResult} from './core/interfaces/i-client-factory.js'
+export type {
+  ConnectOptions,
+  RegistrationOptions,
+  TransportClientFactoryConfig,
+} from './core/interfaces/i-client-factory-config.js'
 
 // Connection management (public API)
 export {
@@ -267,21 +282,11 @@ export {
   type ServerStatusRunning, // Server running status
 } from './infra/client-factory.js'
 
-// Legacy factory pattern (deprecated, but kept for backward compatibility)
-export {
-  createTransportClientFactory, // @deprecated Use connectToTransport() instead
-  TransportClientFactory, // Factory class
-  type TransportClientFactoryConfig, // Factory config
-} from './infra/client-factory.js'
+// Factory (for advanced configuration / custom discovery)
+export {TransportClientFactory} from './infra/client-factory.js'
 
-// NOTE: Removed from public API (dead code, not used in byterover-cli):
-// - getTransportClientFactory() - 0 usage
-// - getConnectedClient() - Not used by CLI
-// - disconnectClient() - Not used by CLI
-// - SingletonClientManager - Internal implementation detail
+// Discovery implementations
 export {DaemonInstanceDiscovery} from './infra/daemon-instance-discovery.js'
-export {FileInstanceDiscovery} from './infra/file-instance-discovery.js'
-export {FileInstanceReader} from './infra/file-instance-reader.js'
 export {getGlobalDataDir} from './infra/global-data-path.js'
 
 // Utilities
