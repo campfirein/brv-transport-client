@@ -31,7 +31,6 @@ export {
   HEARTBEAT_STALE_THRESHOLD_MS,
   TRANSPORT_CONNECT_TIMEOUT_MS,
   TRANSPORT_DEFAULT_TRANSPORTS,
-  TRANSPORT_HOST,
   TRANSPORT_RECONNECTION_ATTEMPTS,
   TRANSPORT_RECONNECTION_DELAY_MAX_MS,
   TRANSPORT_RECONNECTION_DELAY_MS,
@@ -294,7 +293,6 @@ export {isProcessAlive} from './infra/process-utils.js'
 
 // Infrastructure implementations - Main client
 export {
-  type ClientConfigWithLogger,
   TransportClient,
   type TransportClientConfig,
   type TransportClientDependencies,

@@ -36,7 +36,6 @@ describe('TransportClientFactory', () => {
     it('should accept custom discovery service', () => {
       const mockDiscovery: IInstanceDiscovery = {
         discover: async () => ({found: false, reason: 'no_instance'}),
-        findProjectRoot: async () => undefined,
       }
 
       const factory = new TransportClientFactory({discovery: mockDiscovery})
@@ -63,7 +62,6 @@ describe('TransportClientFactory', () => {
     it('should throw NoInstanceRunningError when no instance found', async () => {
       const mockDiscovery: IInstanceDiscovery = {
         discover: async () => ({found: false, reason: 'no_instance'}),
-        findProjectRoot: async () => undefined,
       }
 
       const factory = new TransportClientFactory({discovery: mockDiscovery})
@@ -79,7 +77,6 @@ describe('TransportClientFactory', () => {
     it('should throw InstanceCrashedError when instance crashed', async () => {
       const mockDiscovery: IInstanceDiscovery = {
         discover: async () => ({found: false, reason: 'instance_crashed'}),
-        findProjectRoot: async () => undefined,
       }
 
       const factory = new TransportClientFactory({discovery: mockDiscovery})
@@ -104,7 +101,6 @@ describe('TransportClientFactory', () => {
           instance,
           projectRoot: testDir,
         }),
-        findProjectRoot: async () => testDir,
       }
 
       const factory = new TransportClientFactory({
@@ -128,7 +124,6 @@ describe('TransportClientFactory', () => {
     it('should use cwd as default fromDir', async () => {
       const mockDiscovery: IInstanceDiscovery = {
         discover: sinon.stub().resolves({found: false, reason: 'no_instance'}),
-        findProjectRoot: async () => undefined,
       }
 
       const factory = new TransportClientFactory({discovery: mockDiscovery})
@@ -212,7 +207,6 @@ describe('checkServerStatus()', () => {
   it('should accept custom discovery service', async () => {
     const mockDiscovery: IInstanceDiscovery = {
       discover: sinon.stub().resolves({found: false, reason: 'no_instance'}),
-      findProjectRoot: async () => undefined,
     }
 
     const status = await checkServerStatus(testDir, mockDiscovery)
@@ -238,7 +232,6 @@ describe('TransportClientFactory - Logger Integration', () => {
     const mockLogger = {debug: sinon.spy()}
     const mockDiscovery: IInstanceDiscovery = {
       discover: async () => ({found: false, reason: 'no_instance'}),
-      findProjectRoot: async () => undefined,
     }
 
     const factory = new TransportClientFactory({
@@ -269,7 +262,6 @@ describe('TransportClientFactory - Logger Integration', () => {
         instance,
         projectRoot: testDir,
       }),
-      findProjectRoot: async () => testDir,
     }
 
     const factory = new TransportClientFactory({

@@ -6,7 +6,6 @@
  */
 
 // Transport layer constants (optimized for localhost real-time)
-export const TRANSPORT_HOST = '127.0.0.1'
 export const TRANSPORT_REQUEST_TIMEOUT_MS = 10_000 // 10s - most operations complete quickly
 export const TRANSPORT_ROOM_TIMEOUT_MS = 2000 // 2s - room ops are instant on localhost
 export const TRANSPORT_CONNECT_TIMEOUT_MS = 3000 // 3s - 127.0.0.1 connects in <10ms

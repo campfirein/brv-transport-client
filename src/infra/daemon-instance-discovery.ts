@@ -55,20 +55,6 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
     }
   }
 
-  /**
-   * Returns the caller's directory as "project root" for global daemon.
-   *
-   * Note: The daemon is global (single per machine) and treats the caller's directory
-   * as the project context. The "project root" is whichever directory the client is
-   * operating from.
-   *
-   * @param fromDir - Caller's directory
-   * @returns Always returns fromDir (daemon is global, not project-local)
-   */
-  async findProjectRoot(fromDir: string): Promise<string | undefined> {
-    return fromDir
-  }
-
   async #readInstanceFile(): Promise<InstanceInfo | undefined> {
     const filePath = join(this.#dataDir, DAEMON_INSTANCE_FILE)
 
@@ -83,7 +69,7 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
         return undefined
       }
 
-      // Daemon daemon.json lacks currentSessionId — default to null
+      // daemon.json lacks currentSessionId — default to null
       const instanceJson: InstanceInfoJson = {
         ...parsed.data,
         currentSessionId: null,

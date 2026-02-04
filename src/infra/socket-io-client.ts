@@ -1,7 +1,7 @@
 import {io, Socket} from 'socket.io-client'
 import type {ManagerOptions, SocketOptions} from 'socket.io-client'
 
-import type {ClientConfig, SocketTransport} from '../core/domain/types.js'
+import type {SocketTransport} from '../core/domain/types.js'
 import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 import type {ConnectionState, ConnectionStateHandler} from '../core/interfaces/i-connection-state.js'
 import type {EventHandler} from '../core/interfaces/i-event-dispatcher.js'
@@ -159,33 +159,15 @@ export type TransportClientDependencies = {
 export type TransportClientOptions = TransportClientConfig & TransportClientDependencies
 
 /**
- * Internal dependencies for testing purposes only.
- * Allows injection of mock components for unit testing.
- *
- * @internal
- *
- * @remarks
- * **DO NOT USE IN PRODUCTION CODE**
- *
- * This type exists solely for testing purposes and allows tests to inject
- * mock implementations of internal components. Using this in production
- * code violates the encapsulation guarantees of TransportClient.
- */
-export type InternalTestDependencies = {
-  /** Connection state manager (internal, for testing only) */
-  readonly stateManager?: ConnectionStateManager
-  /** Event dispatcher (internal, for testing only) */
-  readonly eventDispatcher?: EventDispatcher
-  /** Room manager (internal, for testing only) */
-  readonly roomManager?: RoomManager
-}
-
-/**
  * Internal options type that includes test dependencies.
  * Used only within constructor via type assertion - not part of public API.
  * @internal
  */
-type InternalTransportClientOptions = TransportClientOptions & InternalTestDependencies
+type InternalTransportClientOptions = TransportClientOptions & {
+  readonly stateManager?: ConnectionStateManager
+  readonly eventDispatcher?: EventDispatcher
+  readonly roomManager?: RoomManager
+}
 
 // ============================================================================
 // Internal Types
@@ -992,37 +974,4 @@ export class TransportClient implements ITransportClient {
   private log(message: string): void {
     this.#logger.debug(`[TransportClient] ${message}`)
   }
-}
-
-// ==========================================================================
-// Backward Compatibility Export
-// ==========================================================================
-
-/**
- * Configuration with logger for backward compatibility.
- *
- * @deprecated Use {@link TransportClientOptions} instead.
- * This type will be removed in a future major version.
- *
- * @example Migration
- * ```typescript
- * // Before (deprecated):
- * const config: ClientConfigWithLogger = {
- *   connectTimeoutMs: 5000,
- *   logger: myLogger,
- * }
- *
- * // After (recommended):
- * const options: TransportClientOptions = {
- *   connectTimeoutMs: 5000,
- *   logger: myLogger,
- * }
- * ```
- *
- * @see {@link TransportClientOptions} for the new configuration type
- * @see {@link TransportClientConfig} for config-only options (no dependencies)
- * @see {@link TransportClientDependencies} for dependency injection options
- */
-export type ClientConfigWithLogger = ClientConfig & {
-  logger?: IClientLogger
 }

@@ -312,24 +312,6 @@ describe('DaemonInstanceDiscovery', () => {
     })
   })
 
-  describe('findProjectRoot()', () => {
-    it('should return fromDir for global daemon', async () => {
-      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
-
-      const result = await discovery.findProjectRoot('/some/project/path')
-
-      expect(result).to.equal('/some/project/path')
-    })
-
-    it('should return fromDir even if directory does not exist', async () => {
-      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
-
-      const result = await discovery.findProjectRoot('/nonexistent/path')
-
-      expect(result).to.equal('/nonexistent/path')
-    })
-  })
-
   describe('constructor', () => {
     it('should use default dataDir when not provided', () => {
       const discovery = new DaemonInstanceDiscovery()

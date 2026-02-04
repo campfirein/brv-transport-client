@@ -25,12 +25,4 @@ export interface IInstanceDiscovery {
    * @returns DiscoveryResult with instance info and project root if found
    */
   discover: (fromDir: string) => Promise<DiscoveryResult>
-
-  /**
-   * Resolves the project root directory.
-   *
-   * @param fromDir - Starting directory
-   * @returns Project root path or undefined if not determinable
-   */
-  findProjectRoot: (fromDir: string) => Promise<string | undefined>
 }
