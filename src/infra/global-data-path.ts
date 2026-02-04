@@ -20,7 +20,7 @@ export const getGlobalDataDir = (): string => {
 
   if (currentPlatform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA
-    if (localAppData !== undefined) {
+    if (localAppData) {
       return join(localAppData, GLOBAL_DATA_DIR)
     }
 
@@ -34,7 +34,7 @@ export const getGlobalDataDir = (): string => {
   // Linux: respect XDG_DATA_HOME if set
   if (currentPlatform === 'linux') {
     const xdgDataHome = process.env.XDG_DATA_HOME
-    if (xdgDataHome !== undefined) {
+    if (xdgDataHome) {
       return join(xdgDataHome, GLOBAL_DATA_DIR)
     }
   }

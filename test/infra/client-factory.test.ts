@@ -8,6 +8,7 @@ import {TransportClientFactory, checkServerStatus} from '../../src/infra/client-
 import {
   ConnectionFailedError,
   InstanceCrashedError,
+  InstanceStaleError,
   NoInstanceRunningError,
 } from '../../src/core/domain/errors/connection-error.js'
 import type {IInstanceDiscovery} from '../../src/core/interfaces/i-instance-discovery.js'
@@ -86,6 +87,21 @@ describe('TransportClientFactory', () => {
         expect.fail('Should have thrown')
       } catch (error) {
         expect(error).to.be.instanceOf(InstanceCrashedError)
+      }
+    })
+
+    it('should throw InstanceStaleError when instance heartbeat expired', async () => {
+      const mockDiscovery: IInstanceDiscovery = {
+        discover: async () => ({found: false, reason: 'instance_stale'}),
+      }
+
+      const factory = new TransportClientFactory({discovery: mockDiscovery})
+
+      try {
+        await factory.connect(testDir)
+        expect.fail('Should have thrown')
+      } catch (error) {
+        expect(error).to.be.instanceOf(InstanceStaleError)
       }
     })
 
@@ -200,7 +216,8 @@ describe('checkServerStatus()', () => {
     if (status.running) {
       expect(status.instance.pid).to.equal(process.pid)
       expect(status.instance.port).to.equal(9847)
-      expect(status.projectRoot).to.equal(testDir)
+      // testDir has no .brv/ directory, so projectRoot is undefined
+      expect(status.projectRoot).to.be.undefined
     }
   })
 

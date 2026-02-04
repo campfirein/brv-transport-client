@@ -14,8 +14,6 @@ const DEFAULT_TRANSPORT_HOST = '127.0.0.1'
  * This avoids stale status when process crashes.
  */
 export type InstanceInfoJson = {
-  /** Current active session ID (for quick lookup without DB query) */
-  currentSessionId: null | string
   /** Process ID of the Core process */
   pid: number
   /** Port the transport server is listening on */
@@ -37,7 +35,6 @@ export type InstanceInfoJson = {
  * as a timestamp internally to prevent external mutation.
  */
 export class InstanceInfo {
-  public readonly currentSessionId: null | string
   public readonly pid: number
   public readonly port: number
 
@@ -47,8 +44,7 @@ export class InstanceInfo {
    */
   readonly #startedAtMs: number
 
-  private constructor(data: {currentSessionId: null | string; pid: number; port: number; startedAtMs: number}) {
-    this.currentSessionId = data.currentSessionId
+  private constructor(data: {pid: number; port: number; startedAtMs: number}) {
     this.pid = data.pid
     this.port = data.port
     this.#startedAtMs = data.startedAtMs
@@ -65,9 +61,8 @@ export class InstanceInfo {
   /**
    * Creates a new instance info.
    */
-  public static create(data: {currentSessionId?: null | string; pid: number; port: number}): InstanceInfo {
+  public static create(data: {pid: number; port: number}): InstanceInfo {
     return new InstanceInfo({
-      currentSessionId: data.currentSessionId ?? null,
       pid: data.pid,
       port: data.port,
       startedAtMs: Date.now(),
@@ -83,7 +78,6 @@ export class InstanceInfo {
     InstanceInfo.validateJson(json)
 
     return new InstanceInfo({
-      currentSessionId: json.currentSessionId,
       pid: json.pid,
       port: json.port,
       startedAtMs: json.startedAt,
@@ -124,15 +118,6 @@ export class InstanceInfo {
     if (!Number.isInteger(obj.startedAt) || obj.startedAt <= 0) {
       throw new InvalidInstanceDataError('startedAt must be a positive integer timestamp', 'startedAt', obj.startedAt)
     }
-
-    // Validate currentSessionId (can be null or string)
-    if (obj.currentSessionId !== null && typeof obj.currentSessionId !== 'string') {
-      throw new InvalidInstanceDataError(
-        'currentSessionId must be null or a string',
-        'currentSessionId',
-        obj.currentSessionId,
-      )
-    }
   }
 
   /**
@@ -151,23 +136,9 @@ export class InstanceInfo {
    */
   public toJson(): InstanceInfoJson {
     return {
-      currentSessionId: this.currentSessionId,
       pid: this.pid,
       port: this.port,
       startedAt: this.#startedAtMs,
     }
-  }
-
-  /**
-   * Creates a new instance info with updated session ID.
-   * Returns a new immutable instance.
-   */
-  public withSessionId(sessionId: string): InstanceInfo {
-    return new InstanceInfo({
-      currentSessionId: sessionId,
-      pid: this.pid,
-      port: this.port,
-      startedAtMs: this.#startedAtMs,
-    })
   }
 }

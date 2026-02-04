@@ -104,6 +104,28 @@ try {
 }
 ```
 
+### Directory & Path Concepts
+
+`connectToTransport(fromDir)` uses several path concepts internally:
+
+- **`fromDir`** — Starting directory (default: `process.cwd()`). Used for two things:
+  1. Walk up directory tree to find `.brv/` and determine `projectRoot`
+  2. Sent as `cwd` in Socket.IO handshake so the server knows the client's working directory
+
+- **`projectRoot`** — Returned in the result. The directory *containing* `.brv/`, found by walking up from `fromDir`. `undefined` when no `.brv/` exists (e.g. MCP server running globally).
+
+- **`projectPath`** — Set explicitly in `options.projectPath`. Sent to server in `client:register` for room routing and lifecycle management. Independent of `projectRoot`.
+
+```typescript
+// CLI in a project directory
+const { client, projectRoot } = await connectToTransport('/home/user/my-project/src')
+// projectRoot = '/home/user/my-project' (found .brv/ there)
+
+// MCP server (no .brv/ anywhere)
+const { client, projectRoot } = await connectToTransport()
+// projectRoot = undefined
+```
+
 ### Event Names
 
 Import typed event name constants:

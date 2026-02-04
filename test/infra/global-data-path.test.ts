@@ -69,13 +69,13 @@ describe('getGlobalDataDir()', () => {
       expect(result).to.equal(join(homedir(), '.local', 'share', 'brv'))
     })
 
-    it('should use XDG_DATA_HOME even when empty string (explicit set)', () => {
+    it('should fall back to ~/.local/share when XDG_DATA_HOME is empty string', () => {
       process.env.XDG_DATA_HOME = ''
 
       const result = getGlobalDataDir()
 
-      // Empty string is still "defined" — join('', 'brv') = 'brv'
-      expect(result).to.equal(join('', 'brv'))
+      // Empty string is falsy — falls back to default
+      expect(result).to.equal(join(homedir(), '.local', 'share', 'brv'))
     })
   })
 
@@ -130,13 +130,13 @@ describe('getGlobalDataDir()', () => {
       expect(result).to.equal(join(homedir(), 'AppData', 'Local', 'brv'))
     })
 
-    it('should use LOCALAPPDATA even when empty string (explicit set)', () => {
+    it('should fall back to ~/AppData/Local when LOCALAPPDATA is empty string', () => {
       process.env.LOCALAPPDATA = ''
 
       const result = getGlobalDataDir()
 
-      // Empty string is still "defined" — join('', 'brv') = 'brv'
-      expect(result).to.equal(join('', 'brv'))
+      // Empty string is falsy — falls back to default
+      expect(result).to.equal(join(homedir(), 'AppData', 'Local', 'brv'))
     })
   })
 

@@ -86,6 +86,37 @@ Never violate:
 - Domain must not have external dependencies (no Zod, no Socket.IO)
 - Interfaces must not import from Infrastructure
 
+## Directory & Path Concepts
+
+Four distinct path concepts flow through the connection lifecycle. Confusing them causes bugs.
+
+| Concept | What it is | Where used | Can be undefined? |
+|---------|-----------|------------|-------------------|
+| `fromDir` | Starting directory for discovery. Walks up to find `.brv/`. Also sent as `cwd` in Socket.IO handshake. Default: `process.cwd()` | `connectToTransport(fromDir)`, `factory.connect(fromDir)`, `discovery.discover(fromDir)` | No (defaults to cwd) |
+| `projectRoot` | Parent directory of `.brv/` found by walk-up. Returned to caller. | `ConnectionResult.projectRoot`, `ServerStatusRunning.projectRoot` | Yes (undefined if no `.brv/` found, e.g. MCP global) |
+| `cwd` | Client's working directory sent via Socket.IO query during handshake. Same value as `fromDir`. | `TransportClient` constructor, Socket.IO `query.cwd` | No |
+| `projectPath` | Project path sent in `client:register` payload. Server uses it for room routing and lifecycle. Set explicitly by caller. | `RegistrationOptions.projectPath`, `ClientRegisterRequest.projectPath` | Yes (omitted for MCP global) |
+
+**Flow:**
+
+```
+connectToTransport(fromDir)
+  │
+  ├── discovery.discover(fromDir)
+  │     ├── reads daemon.json from global data dir (platform-specific)
+  │     └── walks up from fromDir to find .brv/ → projectRoot (or undefined)
+  │
+  ├── new TransportClient({ cwd: fromDir })
+  │     └── sends cwd in Socket.IO handshake query
+  │
+  └── client:register { clientType, projectPath? }
+        └── projectPath is SEPARATE from projectRoot — set by caller
+
+Return: { client, projectRoot? }
+```
+
+**Key distinction:** `projectRoot` is discovered (walk-up from `fromDir`), while `projectPath` is explicitly provided by the caller in registration options. MCP servers running globally have no `.brv/` directory, so `projectRoot` is `undefined` — they learn the project path from task payloads (`clientCwd` field).
+
 ## Key Design Decisions
 
 - **ES2022 private fields** (`#field`) for runtime encapsulation

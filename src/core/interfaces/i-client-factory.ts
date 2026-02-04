@@ -7,8 +7,8 @@ import type {RegistrationOptions} from './i-client-factory-config.js'
 export type ConnectionResult = {
   /** The connected client */
   readonly client: ITransportClient
-  /** Project root where instance was found */
-  readonly projectRoot: string
+  /** Project root (directory containing .brv/). Undefined if not in a brv project (e.g., MCP global). */
+  readonly projectRoot?: string
 }
 
 /**
@@ -41,6 +41,7 @@ export interface IClientFactory {
    * @returns Connected client and project root
    * @throws NoInstanceRunningError - No daemon instance found
    * @throws InstanceCrashedError - Instance found but process dead
+   * @throws InstanceStaleError - Instance found but heartbeat expired
    * @throws ConnectionFailedError - Instance found but connection failed
    */
   connect(fromDir?: string, options?: RegistrationOptions): Promise<ConnectionResult>

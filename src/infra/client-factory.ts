@@ -35,8 +35,8 @@ export type {ConnectionResult} from '../core/interfaces/i-client-factory.js'
 export type ServerStatusRunning = {
   /** Instance information (pid, port, etc.) */
   readonly instance: InstanceInfo
-  /** Project root where instance was found */
-  readonly projectRoot: string
+  /** Project root (directory containing .brv/). Undefined if not in a brv project (e.g., MCP global). */
+  readonly projectRoot?: string
   /** Server is running and ready */
   readonly running: true
 }
@@ -75,7 +75,7 @@ function toServerStatus(result: DiscoveryResult): ServerStatus {
   }
   return Object.freeze({
     instance: result.instance,
-    projectRoot: result.projectRoot,
+    ...(result.projectRoot !== undefined && {projectRoot: result.projectRoot}),
     running: true as const,
   })
 }
@@ -143,9 +143,11 @@ export class TransportClientFactory implements IClientFactory {
   /**
    * Discovers a running instance and connects to it.
    *
-   * @param fromDir - Directory to start discovery from (default: cwd)
+   * @param fromDir - Starting directory for project root discovery (walks up to find .brv/).
+   *                  Also used as the client's working directory (cwd) for Socket.IO handshake.
+   *                  Default: process.cwd()
    * @param options - Optional registration options (autoRegister defaults to true)
-   * @returns Connected client and project root
+   * @returns Connected client and project root (undefined if no .brv/ found)
    * @throws NoInstanceRunningError - No daemon instance found
    * @throws InstanceCrashedError - Instance found but process dead
    * @throws InstanceStaleError - Instance found but heartbeat expired
@@ -236,35 +238,29 @@ export class TransportClientFactory implements IClientFactory {
    * Returns true if warm-up succeeded (status 2xx), false otherwise.
    */
   private async httpWarmUp(url: string): Promise<boolean> {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), this.#warmUpTimeoutMs)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.#warmUpTimeoutMs)
 
-      const response = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
-        method: 'GET',
-        signal: controller.signal,
-      }).catch((error: Error) => {
-        this.log(`HTTP warm-up fetch error: ${error.message}`)
-        return null
-      })
+    const response = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
+      method: 'GET',
+      signal: controller.signal,
+    }).catch((error: Error) => {
+      this.log(`HTTP warm-up fetch error: ${error.message}`)
+      return null
+    })
 
-      clearTimeout(timeoutId)
+    clearTimeout(timeoutId)
 
-      if (response?.ok) {
-        this.log(`HTTP warm-up succeeded with status: ${response.status}`)
-        return true
-      }
-
-      if (response) {
-        this.log(`HTTP warm-up completed with non-OK status: ${response.status}`)
-      }
-
-      return false
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      this.log(`HTTP warm-up failed: ${errorMessage}`)
-      return false
+    if (response?.ok) {
+      this.log(`HTTP warm-up succeeded with status: ${response.status}`)
+      return true
     }
+
+    if (response) {
+      this.log(`HTTP warm-up completed with non-OK status: ${response.status}`)
+    }
+
+    return false
   }
 
   /**
@@ -292,7 +288,7 @@ export class TransportClientFactory implements IClientFactory {
   }
 
   /**
-   * Calculates retry delay with exponential backoff for sandbox errors.
+   * Calculates retry delay with linear backoff. Sandbox errors use double base delay.
    */
   private calculateRetryDelay(attempt: number, isSandboxError: boolean): number {
     const baseDelay = isSandboxError ? this.#retryDelayMs * SANDBOX_ERROR_MULTIPLIER : this.#retryDelayMs

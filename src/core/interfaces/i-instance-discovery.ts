@@ -9,7 +9,7 @@ import type {InstanceInfo} from '../domain/entities/instance-info.js'
  */
 export type DiscoveryResult =
   | {found: false; reason: 'instance_crashed' | 'instance_stale' | 'no_instance'}
-  | {found: true; instance: InstanceInfo; projectRoot: string}
+  | {found: true; instance: InstanceInfo; projectRoot?: string}
 
 /**
  * Interface for discovering running ByteRover instances.

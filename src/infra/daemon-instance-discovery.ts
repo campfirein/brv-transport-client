@@ -1,11 +1,11 @@
-import {readFile} from 'node:fs/promises'
-import {join} from 'node:path'
+import {access, readFile} from 'node:fs/promises'
+import {dirname, join} from 'node:path'
 
 import type {DiscoveryResult, IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
 import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 
-import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE, HEARTBEAT_STALE_THRESHOLD_MS} from '../constants.js'
-import {InstanceInfo, type InstanceInfoJson} from '../core/domain/entities/instance-info.js'
+import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE, HEARTBEAT_STALE_THRESHOLD_MS} from '../constants.js'
+import {InstanceInfo} from '../core/domain/entities/instance-info.js'
 import {getGlobalDataDir} from './global-data-path.js'
 import {isProcessAlive} from './process-utils.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
@@ -48,10 +48,32 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       return {found: false, reason: 'instance_stale'}
     }
 
+    const projectRoot = await this.#findProjectRoot(fromDir)
+
     return {
       found: true,
       instance,
-      projectRoot: fromDir,
+      ...(projectRoot !== undefined && {projectRoot}),
+    }
+  }
+
+  async #findProjectRoot(fromDir: string): Promise<string | undefined> {
+    let currentDir = fromDir
+
+    while (true) {
+      try {
+        await access(join(currentDir, BRV_DIR))
+        return currentDir
+      } catch {
+        // .brv/ not found at this level, walk up
+      }
+
+      const parentDir = dirname(currentDir)
+      if (parentDir === currentDir) {
+        // Reached filesystem root
+        return undefined
+      }
+      currentDir = parentDir
     }
   }
 
@@ -69,13 +91,7 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
         return undefined
       }
 
-      // daemon.json lacks currentSessionId — default to null
-      const instanceJson: InstanceInfoJson = {
-        ...parsed.data,
-        currentSessionId: null,
-      }
-
-      return InstanceInfo.fromJson(instanceJson)
+      return InstanceInfo.fromJson(parsed.data)
     } catch (error) {
       // Log specific error types for debugging
       if (error && typeof error === 'object' && 'code' in error) {

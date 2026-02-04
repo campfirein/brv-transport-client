@@ -21,7 +21,6 @@ import {
   // Enums and base types
   AgentTerminationReasonSchema,
   ChunkTypeSchema,
-  ClientTypeSchema,
   LogLevelSchema,
   TaskTypeSchema,
   TodoStatusSchema,
@@ -114,8 +113,8 @@ export type ToolErrorType = z.infer<typeof ToolErrorTypeSchema>
 /** Reasons for agent execution termination */
 export type AgentTerminationReason = z.infer<typeof AgentTerminationReasonSchema>
 
-/** Client types for registration */
-export type ClientType = z.infer<typeof ClientTypeSchema>
+// ClientType is defined in core/domain/types.ts (canonical source)
+// Use: import type { ClientType } from '../domain/types.js'
 
 // ============================================================================
 // Shared Structure Types

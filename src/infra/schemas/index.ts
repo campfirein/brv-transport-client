@@ -85,7 +85,6 @@ export type {
   // Enum types
   AgentTerminationReason,
   ChunkType,
-  ClientType,
   LogLevel,
   TaskType,
   TodoStatus,

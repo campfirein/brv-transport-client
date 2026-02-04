@@ -21,6 +21,9 @@ export const TRANSPORT_DEFAULT_TRANSPORTS = ['websocket'] as const
 export const ROOM_MAX_REJOIN_ATTEMPTS = 5 // Max attempts to rejoin a room after reconnect
 export const ROOM_REJOIN_BASE_DELAY_MS = 50 // Base delay for exponential backoff (50ms, 100ms, 200ms...)
 
+// Project root discovery (walk-up to find .brv/ directory)
+export const BRV_DIR = '.brv'
+
 // Daemon instance discovery constants (platform-specific global data directory)
 export const GLOBAL_DATA_DIR = 'brv'
 export const DAEMON_INSTANCE_FILE = 'daemon.json'

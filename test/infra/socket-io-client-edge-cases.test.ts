@@ -358,6 +358,37 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
     })
   })
 
+  describe('Error Recovery', () => {
+    it('should handle errors in state change handlers', () => {
+      const errorHandler = () => {
+        throw new Error('Handler error')
+      }
+      const normalHandler = sinon.spy()
+
+      // Register error-throwing handler alongside normal handler
+      client.onStateChange(errorHandler)
+      client.onStateChange(normalHandler)
+
+      // Client should remain functional despite error-prone handler registration
+      expect(client.getState()).to.equal('disconnected')
+    })
+
+    it('should handle errors in event handlers', () => {
+      const errorHandler = () => {
+        throw new Error('Event handler error')
+      }
+
+      // Register error-throwing handler
+      const unsubscribe = client.on('test-event', errorHandler)
+
+      // Client should remain functional
+      expect(client.getState()).to.equal('disconnected')
+
+      // Cleanup should work
+      unsubscribe()
+    })
+  })
+
   describe('API Contract Validation', () => {
     it('should expose all public methods from ITransportClient', () => {
       expect(client.connect).to.be.a('function')

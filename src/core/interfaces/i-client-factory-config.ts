@@ -143,7 +143,11 @@ export type RegistrationOptions = {
 
 /**
  * Extended configuration combining factory config and registration options.
- * Used by connectToTransport() and TransportClientFactory.connect().
+ * Used by connectToTransport() as a unified options bag.
+ *
+ * Internally, connectToTransport() destructures this into:
+ * - TransportClientFactoryConfig: passed to TransportClientFactory constructor
+ * - RegistrationOptions: passed to factory.connect() for post-connection registration
  *
  * @example
  * ```typescript

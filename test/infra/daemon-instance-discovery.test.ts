@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import {tmpdir} from 'node:os'
 
 import {DaemonInstanceDiscovery} from '../../src/infra/daemon-instance-discovery.js'
-import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../src/constants.js'
+import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../src/constants.js'
 
 describe('DaemonInstanceDiscovery', () => {
   let testDataDir: string
@@ -36,13 +36,81 @@ describe('DaemonInstanceDiscovery', () => {
       // Create fresh heartbeat
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
+      // Discover from a dir without .brv/ → projectRoot should be undefined
       const result = await discovery.discover('/some/project')
 
       expect(result.found).to.be.true
       if (result.found) {
         expect(result.instance.pid).to.equal(process.pid)
         expect(result.instance.port).to.equal(9847)
-        expect(result.projectRoot).to.equal('/some/project')
+        expect(result.projectRoot).to.be.undefined
+      }
+    })
+
+    it('should find projectRoot by walking up to .brv/ directory', async () => {
+      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
+
+      // Create valid daemon.json + heartbeat
+      await fs.writeFile(
+        path.join(testDataDir, DAEMON_INSTANCE_FILE),
+        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+      )
+      await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
+
+      // Create project structure: projectDir/.brv/ and projectDir/sub/deep/
+      const projectDir = await fs.mkdtemp(path.join(testDataDir, 'project-'))
+      await fs.mkdir(path.join(projectDir, BRV_DIR))
+      const subDir = path.join(projectDir, 'sub', 'deep')
+      await fs.mkdir(subDir, {recursive: true})
+
+      // Discover from deep subdirectory → should walk up and find .brv/
+      const result = await discovery.discover(subDir)
+
+      expect(result.found).to.be.true
+      if (result.found) {
+        expect(result.projectRoot).to.equal(projectDir)
+      }
+    })
+
+    it('should find projectRoot when .brv/ is in fromDir itself', async () => {
+      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
+
+      // Create valid daemon.json + heartbeat
+      await fs.writeFile(
+        path.join(testDataDir, DAEMON_INSTANCE_FILE),
+        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+      )
+      await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
+
+      // Create .brv/ in testDataDir itself
+      await fs.mkdir(path.join(testDataDir, BRV_DIR))
+
+      const result = await discovery.discover(testDataDir)
+
+      expect(result.found).to.be.true
+      if (result.found) {
+        expect(result.projectRoot).to.equal(testDataDir)
+      }
+    })
+
+    it('should return undefined projectRoot when no .brv/ found (MCP global)', async () => {
+      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
+
+      // Create valid daemon.json + heartbeat
+      await fs.writeFile(
+        path.join(testDataDir, DAEMON_INSTANCE_FILE),
+        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+      )
+      await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
+
+      // No .brv/ anywhere in the temp directory tree
+      const noProjectDir = await fs.mkdtemp(path.join(testDataDir, 'no-project-'))
+
+      const result = await discovery.discover(noProjectDir)
+
+      expect(result.found).to.be.true
+      if (result.found) {
+        expect(result.projectRoot).to.be.undefined
       }
     })
 

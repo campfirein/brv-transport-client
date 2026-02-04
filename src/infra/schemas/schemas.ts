@@ -122,16 +122,14 @@ export const TaskErrorDataSchema = z.object({
  * - port: Transport server port (1024-65535)
  * - startedAt: Unix timestamp in milliseconds (positive integer)
  *
- * Note: Uses .strict() to reject unknown fields (defense in depth).
+ * Note: Default strip mode allows forward-compatible daemon.json (unknown fields are ignored).
  */
-export const DaemonInstanceSchema = z
-  .object({
-    pid: z.number().int().positive(),
-    port: z.number().int().min(1024).max(65535),
-    startedAt: z.number().int().positive(),
-    version: z.string().optional(),
-  })
-  .strict()
+export const DaemonInstanceSchema = z.object({
+  pid: z.number().int().positive(),
+  port: z.number().int().min(1024).max(65535),
+  startedAt: z.number().int().positive(),
+  version: z.string().optional(),
+})
 
 // ============================================================================
 // Task Event Payloads (task:*)

@@ -171,7 +171,6 @@ export type {
   // Enum types
   AgentTerminationReason,
   ChunkType,
-  ClientType,
   // Cipher event types
   CipherConversationReset,
   // Daemon types
@@ -238,7 +237,7 @@ export type {
   UIEventType,
 } from './infra/schemas/index.js'
 // Domain types
-export type {ClientConfig, SocketTransport} from './core/domain/types.js'
+export type {ClientConfig, ClientType, SocketTransport} from './core/domain/types.js'
 
 export type {IClientLogger} from './core/interfaces/i-client-logger.js'
 export {NoOpClientLogger} from './infra/no-op-client-logger.js'
