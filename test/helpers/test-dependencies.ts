@@ -6,4 +6,4 @@
  * @packageDocumentation
  */
 
-export type {InternalTestDependencies} from '../../infra/socket-io-client.js'
+export type {InternalTestDependencies} from '../../src/infra/socket-io-client.js'

@@ -8,10 +8,10 @@
  * @packageDocumentation
  */
 
-import type {TransportClientDependencies} from '../../infra/socket-io-client.js'
-import type {ConnectionStateManager} from '../../infra/connection-state-manager.js'
-import type {EventDispatcher} from '../../infra/event-dispatcher.js'
-import type {RoomManager} from '../../infra/room-manager.js'
+import type {TransportClientDependencies} from '../../src/infra/socket-io-client.js'
+import type {ConnectionStateManager} from '../../src/infra/connection-state-manager.js'
+import type {EventDispatcher} from '../../src/infra/event-dispatcher.js'
+import type {RoomManager} from '../../src/infra/room-manager.js'
 
 /**
  * Extended dependencies type that includes internal components for testing.

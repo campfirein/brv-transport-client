@@ -8,7 +8,7 @@ import {
   TransportRequestTimeoutError,
   TransportRoomError,
   TransportRoomTimeoutError,
-} from '../../../../core/domain/errors/transport-error.js'
+} from '../../../../src/core/domain/errors/transport-error.js'
 
 describe('Transport Errors', () => {
   describe('TransportError', () => {

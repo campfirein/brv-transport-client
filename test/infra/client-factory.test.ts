@@ -4,19 +4,16 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import {tmpdir} from 'node:os'
 
-import {
-  TransportClientFactory,
-  checkServerStatus,
-} from '../../infra/client-factory.js'
+import {TransportClientFactory, checkServerStatus} from '../../src/infra/client-factory.js'
 import {
   ConnectionFailedError,
   InstanceCrashedError,
   NoInstanceRunningError,
-} from '../../core/domain/errors/connection-error.js'
-import type {IInstanceDiscovery} from '../../core/interfaces/i-instance-discovery.js'
-import {InstanceInfo} from '../../core/domain/entities/instance-info.js'
-import {DaemonInstanceDiscovery} from '../../infra/daemon-instance-discovery.js'
-import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../constants.js'
+} from '../../src/core/domain/errors/connection-error.js'
+import type {IInstanceDiscovery} from '../../src/core/interfaces/i-instance-discovery.js'
+import {InstanceInfo} from '../../src/core/domain/entities/instance-info.js'
+import {DaemonInstanceDiscovery} from '../../src/infra/daemon-instance-discovery.js'
+import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../src/constants.js'
 
 describe('TransportClientFactory', () => {
   let testDir: string

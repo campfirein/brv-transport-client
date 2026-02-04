@@ -6,7 +6,7 @@ import {
   ConnectionTimeoutError,
   InstanceCrashedError,
   NoInstanceRunningError,
-} from '../../../../core/domain/errors/connection-error.js'
+} from '../../../../src/core/domain/errors/connection-error.js'
 
 describe('Connection Errors', () => {
   describe('ConnectionError', () => {

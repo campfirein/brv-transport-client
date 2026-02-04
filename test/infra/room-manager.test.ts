@@ -1,15 +1,15 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {RoomManager} from '../../infra/room-manager.js'
-import type {ISocketProvider} from '../../core/interfaces/i-socket-provider.js'
-import type {ISocket} from '../../core/interfaces/i-socket.js'
+import {RoomManager} from '../../src/infra/room-manager.js'
+import type {ISocketProvider} from '../../src/core/interfaces/i-socket-provider.js'
+import type {ISocket} from '../../src/core/interfaces/i-socket.js'
 import {
   TransportNotConnectedError,
   TransportRoomError,
   TransportRoomTimeoutError,
   InvalidRoomNameError,
-} from '../../core/domain/errors/transport-error.js'
+} from '../../src/core/domain/errors/transport-error.js'
 
 describe('RoomManager', () => {
   let roomManager: RoomManager

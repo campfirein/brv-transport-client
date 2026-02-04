@@ -1,6 +1,6 @@
 import {describe, it} from 'mocha'
 import {expect} from 'chai'
-import {deepFreeze} from '../../../infra/utils/deep-freeze.js'
+import {deepFreeze} from '../../../src/infra/utils/deep-freeze.js'
 
 describe('deepFreeze', () => {
   describe('basic functionality', () => {

@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
-import {InstanceInfo} from '../../../../core/domain/entities/instance-info.js'
-import {InvalidInstanceDataError} from '../../../../core/domain/errors/connection-error.js'
+import {InstanceInfo} from '../../../../src/core/domain/entities/instance-info.js'
+import {InvalidInstanceDataError} from '../../../../src/core/domain/errors/connection-error.js'
 
 describe('InstanceInfo', () => {
   describe('create()', () => {

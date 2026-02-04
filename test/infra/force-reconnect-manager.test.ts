@@ -1,8 +1,8 @@
 import {expect} from 'chai'
 import sinon from 'sinon'
-import {ForceReconnectManager} from '../../infra/force-reconnect-manager.js'
-import {NoOpClientLogger} from '../../infra/no-op-client-logger.js'
-import {ExponentialBackoffStrategy} from '../../infra/reconnection-strategy.js'
+import {ForceReconnectManager} from '../../src/infra/force-reconnect-manager.js'
+import {NoOpClientLogger} from '../../src/infra/no-op-client-logger.js'
+import {ExponentialBackoffStrategy} from '../../src/infra/reconnection-strategy.js'
 
 describe('ForceReconnectManager', () => {
   let clock: sinon.SinonFakeTimers

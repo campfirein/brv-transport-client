@@ -1,7 +1,7 @@
 import {describe, it} from 'mocha'
 import {expect} from 'chai'
-import {validateTransportUrl} from '../../../../core/domain/validators/url-validator.js'
-import {InvalidTransportUrlError} from '../../../../core/domain/errors/transport-error.js'
+import {validateTransportUrl} from '../../../../src/core/domain/validators/url-validator.js'
+import {InvalidTransportUrlError} from '../../../../src/core/domain/errors/transport-error.js'
 
 describe('validateTransportUrl', () => {
   describe('valid URLs', () => {

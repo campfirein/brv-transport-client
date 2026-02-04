@@ -1,10 +1,13 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {EventDispatcher} from '../../infra/event-dispatcher.js'
-import type {ISocketProvider} from '../../core/interfaces/i-socket-provider.js'
-import type {ISocket} from '../../core/interfaces/i-socket.js'
-import {InvalidEventNameError, MaxPendingOnceHandlersExceededError} from '../../core/domain/errors/transport-error.js'
+import {EventDispatcher} from '../../src/infra/event-dispatcher.js'
+import type {ISocketProvider} from '../../src/core/interfaces/i-socket-provider.js'
+import type {ISocket} from '../../src/core/interfaces/i-socket.js'
+import {
+  InvalidEventNameError,
+  MaxPendingOnceHandlersExceededError,
+} from '../../src/core/domain/errors/transport-error.js'
 
 describe('EventDispatcher', () => {
   let dispatcher: EventDispatcher

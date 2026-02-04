@@ -1,11 +1,11 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {TransportClient} from '../../infra/socket-io-client.js'
-import {NoOpClientLogger} from '../../infra/no-op-client-logger.js'
-import {ExponentialBackoffStrategy} from '../../infra/reconnection-strategy.js'
-import {TimeBasedWakeDetector} from '../../infra/wake-detector.js'
-import {TransportNotConnectedError, InvalidEventNameError} from '../../core/domain/errors/transport-error.js'
+import {TransportClient} from '../../src/infra/socket-io-client.js'
+import {NoOpClientLogger} from '../../src/infra/no-op-client-logger.js'
+import {ExponentialBackoffStrategy} from '../../src/infra/reconnection-strategy.js'
+import {TimeBasedWakeDetector} from '../../src/infra/wake-detector.js'
+import {TransportNotConnectedError, InvalidEventNameError} from '../../src/core/domain/errors/transport-error.js'
 
 describe('TransportClient - Edge Cases & Critical Paths', () => {
   let client: TransportClient

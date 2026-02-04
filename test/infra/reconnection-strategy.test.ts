@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {ExponentialBackoffStrategy, createDefaultReconnectionStrategy} from '../../infra/reconnection-strategy.js'
+import {ExponentialBackoffStrategy, createDefaultReconnectionStrategy} from '../../src/infra/reconnection-strategy.js'
 
 describe('ExponentialBackoffStrategy', () => {
   let clock: sinon.SinonFakeTimers

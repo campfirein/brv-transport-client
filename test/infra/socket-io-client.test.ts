@@ -1,8 +1,8 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {TransportClient} from '../../infra/socket-io-client.js'
-import {TransportNotConnectedError} from '../../core/domain/errors/transport-error.js'
+import {TransportClient} from '../../src/infra/socket-io-client.js'
+import {TransportNotConnectedError} from '../../src/core/domain/errors/transport-error.js'
 
 describe('TransportClient', () => {
   let client: TransportClient

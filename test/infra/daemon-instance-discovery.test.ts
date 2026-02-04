@@ -3,8 +3,8 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import {tmpdir} from 'node:os'
 
-import {DaemonInstanceDiscovery} from '../../infra/daemon-instance-discovery.js'
-import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../constants.js'
+import {DaemonInstanceDiscovery} from '../../src/infra/daemon-instance-discovery.js'
+import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../src/constants.js'
 
 describe('DaemonInstanceDiscovery', () => {
   let testDataDir: string

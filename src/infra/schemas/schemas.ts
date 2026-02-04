@@ -124,12 +124,14 @@ export const TaskErrorDataSchema = z.object({
  *
  * Note: Uses .strict() to reject unknown fields (defense in depth).
  */
-export const DaemonInstanceSchema = z.object({
-  pid: z.number().int().positive(),
-  port: z.number().int().min(1024).max(65535),
-  startedAt: z.number().int().positive(),
-  version: z.string().optional(),
-}).strict()
+export const DaemonInstanceSchema = z
+  .object({
+    pid: z.number().int().positive(),
+    port: z.number().int().min(1024).max(65535),
+    startedAt: z.number().int().positive(),
+    version: z.string().optional(),
+  })
+  .strict()
 
 // ============================================================================
 // Task Event Payloads (task:*)

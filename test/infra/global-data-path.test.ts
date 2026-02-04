@@ -2,7 +2,7 @@ import {expect} from 'chai'
 import {homedir} from 'node:os'
 import {join} from 'node:path'
 
-import {getGlobalDataDir} from '../../infra/global-data-path.js'
+import {getGlobalDataDir} from '../../src/infra/global-data-path.js'
 
 describe('getGlobalDataDir()', () => {
   let originalPlatform: string
