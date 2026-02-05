@@ -1,0 +1,14 @@
+/**
+ * Transport Schemas Module (Infrastructure Layer)
+ *
+ * Contains Zod validation schemas and TypeScript types for Socket.IO transport payloads.
+ * Located in the infrastructure layer because:
+ * 1. Zod is an external validation library (infrastructure concern)
+ * 2. Runtime validation is an infrastructure responsibility
+ *
+ * Types derived from schemas (via z.infer) are co-located for maintainability
+ * as they form a "single source of truth" pattern.
+ */
+export { AgentTerminationReasonSchema, ChunkTypeSchema, LogLevelSchema, TaskTypeSchema, TodoStatusSchema, ToolErrorTypeSchema, UIEventTypeSchema, TaskErrorDataSchema, TodoItemSchema, TokenUsageSchema, TaskAckSchema, TaskCancelledSchema, TaskCancelRequestSchema, TaskCancelResponseSchema, TaskCompletedSchema, TaskCreatedSchema, TaskCreateRequestSchema, TaskErrorSchema, TaskExecuteSchema, TaskStartedSchema, LlmChunkSchema, LlmErrorSchema, LlmOutputTruncatedSchema, LlmResponseSchema, LlmThinkingSchema, LlmThoughtSchema, LlmTodoUpdatedSchema, LlmToolCallSchema, LlmToolResultSchema, LlmUnsupportedInputSchema, LlmWarningSchema, CipherConversationResetSchema, CipherExecutionStartedSchema, CipherExecutionTerminatedSchema, CipherLogSchema, CipherStateChangedSchema, CipherStateResetSchema, CipherUISchema, SessionCreateRequestSchema, SessionCreateResponseSchema, SessionInfoRequestSchema, SessionInfoResponseSchema, SessionInfoSchema, SessionListRequestSchema, SessionListResponseSchema, SessionStatsSchema, SessionSwitchedBroadcastSchema, SessionSwitchRequestSchema, SessionSwitchResponseSchema, AgentNewSessionRequestSchema, AgentNewSessionResponseSchema, AgentRestartRequestSchema, AgentRestartResponseSchema, AgentStatusSchema, } from './schemas.js';
+export type { AgentTerminationReason, ChunkType, LogLevel, TaskType, TodoStatus, ToolErrorType, UIEventType, TaskErrorData, TodoItem, TokenUsage, TaskAck, TaskCancelled, TaskCancelRequest, TaskCancelResponse, TaskCompleted, TaskCreated, TaskCreateRequest, TaskError, TaskExecute, TaskStarted, LlmChunk, LlmError, LlmOutputTruncated, LlmResponse, LlmThinking, LlmThought, LlmTodoUpdated, LlmToolCall, LlmToolResult, LlmUnsupportedInput, LlmWarning, CipherConversationReset, CipherExecutionStarted, CipherExecutionTerminated, CipherLog, CipherStateChanged, CipherStateReset, CipherUI, SessionCreateRequest, SessionCreateResponse, SessionInfo, SessionInfoRequest, SessionInfoResponse, SessionListRequest, SessionListResponse, SessionStats, SessionSwitchedBroadcast, SessionSwitchRequest, SessionSwitchResponse, AgentNewSessionRequest, AgentNewSessionResponse, AgentRestartRequest, AgentRestartResponse, AgentStatus, CipherEventPayloadMap, LlmEventPayloadMap, RequestResponseMap, SessionEventPayloadMap, TaskEventPayloadMap, TransportEventPayloadMap, } from './types.js';
+//# sourceMappingURL=index.d.ts.map

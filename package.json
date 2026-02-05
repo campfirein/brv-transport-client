@@ -1,6 +1,6 @@
 {
   "name": "@campfirein/brv-transport-client",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Transport client for ByteRover CLI - server discovery, connection, and real-time communication",
   "type": "module",
   "main": "dist/index.js",
@@ -24,8 +24,7 @@
     "test:coverage": "c8 --reporter=lcov --reporter=text mocha",
     "typecheck": "tsc --noEmit",
     "prepack": "npm run clean && npm run build",
-    "prepublishOnly": "npm run lint && npm run test && npm run build",
-    "prepare": "npm run build"
+    "prepublishOnly": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "socket.io-client": "^4.8.1",
