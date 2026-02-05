@@ -29,3 +29,15 @@ export const GLOBAL_DATA_DIR = 'brv'
 export const DAEMON_INSTANCE_FILE = 'daemon.json'
 export const HEARTBEAT_FILE = 'heartbeat'
 export const HEARTBEAT_STALE_THRESHOLD_MS = 15_000
+
+// Spawn lock — prevents concurrent daemon spawn attempts
+export const SPAWN_LOCK_FILE = 'spawn.lock'
+export const SPAWN_LOCK_STALE_THRESHOLD_MS = 30_000 // 30s
+
+// Daemon readiness polling
+export const DAEMON_READY_TIMEOUT_MS = 5000 // 5s max wait
+export const DAEMON_READY_POLL_INTERVAL_MS = 100 // 100ms between polls
+
+// Daemon spawner — budget allocation for stop + poll
+export const DAEMON_STOP_BUDGET_MS = 3000 // 3s max to stop old daemon
+export const DAEMON_STOP_POLL_INTERVAL_MS = 100 // 100ms between death checks

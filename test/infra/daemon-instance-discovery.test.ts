@@ -150,10 +150,7 @@ describe('DaemonInstanceDiscovery', () => {
     })
 
     it('should return instance_stale when heartbeat is stale', async () => {
-      const discovery = new DaemonInstanceDiscovery({
-        dataDir: testDataDir,
-        heartbeatThresholdMs: 1000, // 1 second threshold
-      })
+      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
 
       // Create valid daemon.json with current process PID
       await fs.writeFile(
@@ -165,8 +162,8 @@ describe('DaemonInstanceDiscovery', () => {
         }),
       )
 
-      // Create stale heartbeat (2 seconds old)
-      const staleTimestamp = Date.now() - 2000
+      // Create stale heartbeat (older than default 15s threshold)
+      const staleTimestamp = Date.now() - 20_000
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(staleTimestamp))
 
       const result = await discovery.discover('/some/project')

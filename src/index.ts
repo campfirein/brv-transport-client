@@ -26,9 +26,15 @@
 // Constants (for advanced configuration)
 export {
   DAEMON_INSTANCE_FILE,
+  DAEMON_READY_POLL_INTERVAL_MS,
+  DAEMON_READY_TIMEOUT_MS,
+  DAEMON_STOP_BUDGET_MS,
+  DAEMON_STOP_POLL_INTERVAL_MS,
   GLOBAL_DATA_DIR,
   HEARTBEAT_FILE,
   HEARTBEAT_STALE_THRESHOLD_MS,
+  SPAWN_LOCK_FILE,
+  SPAWN_LOCK_STALE_THRESHOLD_MS,
   TRANSPORT_CONNECT_TIMEOUT_MS,
   TRANSPORT_DEFAULT_TRANSPORTS,
   TRANSPORT_RECONNECTION_ATTEMPTS,
@@ -263,6 +269,16 @@ export type {IWakeDetector, WakeHandler} from './core/interfaces/i-wake-detector
 // Core interfaces - Discovery
 export type {DiscoveryResult, IInstanceDiscovery} from './core/interfaces/i-instance-discovery.js'
 
+// Core interfaces - Instance management
+export type {
+  DaemonAcquireResult,
+  DaemonInstanceInfo,
+  IGlobalInstanceManager,
+} from './core/interfaces/i-instance-manager.js'
+
+// Core interfaces - Spawn lock
+export type {ISpawnLock, SpawnLockAcquireResult} from './core/interfaces/i-spawn-lock.js'
+
 // Core interfaces - Factory
 export type {IClientFactory, ConnectionResult} from './core/interfaces/i-client-factory.js'
 export type {
@@ -282,6 +298,25 @@ export {
 
 // Factory (for advanced configuration / custom discovery)
 export {TransportClientFactory} from './infra/client-factory.js'
+
+// Daemon lifecycle - PRIMARY API
+export {
+  connectToDaemon,
+  type ConnectToDaemonDeps,
+  type ConnectToDaemonOptions,
+} from './infra/daemon-connector.js'
+
+// Daemon lifecycle - Spawner
+export {ensureDaemonRunning, type EnsureDaemonResult} from './infra/daemon-spawner.js'
+
+// Daemon lifecycle - Sync discovery (health check)
+export {discoverDaemon, type DaemonStatus} from './infra/daemon-discovery-sync.js'
+
+// Daemon lifecycle - Infrastructure
+export {GlobalInstanceManager} from './infra/global-instance-manager.js'
+export {isHeartbeatStale} from './infra/heartbeat-utils.js'
+export {resolveServerPath} from './infra/resolve-server-path.js'
+export {SpawnLock} from './infra/spawn-lock.js'
 
 // Discovery implementations
 export {DaemonInstanceDiscovery} from './infra/daemon-instance-discovery.js'

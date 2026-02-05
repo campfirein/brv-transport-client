@@ -4,9 +4,10 @@ import {dirname, join} from 'node:path'
 import type {DiscoveryResult, IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
 import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 
-import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE, HEARTBEAT_STALE_THRESHOLD_MS} from '../constants.js'
+import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../constants.js'
 import {InstanceInfo} from '../core/domain/entities/instance-info.js'
 import {getGlobalDataDir} from './global-data-path.js'
+import {isHeartbeatStale} from './heartbeat-utils.js'
 import {isProcessAlive} from './process-utils.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
 import {DaemonInstanceSchema} from './schemas/schemas.js'
@@ -24,12 +25,10 @@ import {DaemonInstanceSchema} from './schemas/schemas.js'
  */
 export class DaemonInstanceDiscovery implements IInstanceDiscovery {
   readonly #dataDir: string
-  readonly #heartbeatThresholdMs: number
   readonly #logger: IClientLogger
 
-  constructor(options?: {dataDir?: string; heartbeatThresholdMs?: number; logger?: IClientLogger}) {
+  constructor(options?: {dataDir?: string; logger?: IClientLogger}) {
     this.#dataDir = options?.dataDir ?? getGlobalDataDir()
-    this.#heartbeatThresholdMs = options?.heartbeatThresholdMs ?? HEARTBEAT_STALE_THRESHOLD_MS
     this.#logger = options?.logger ?? new NoOpClientLogger()
   }
 
@@ -43,8 +42,8 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       return {found: false, reason: 'instance_crashed'}
     }
 
-    const heartbeatFresh = await this.#isHeartbeatFresh()
-    if (!heartbeatFresh) {
+    const heartbeatPath = join(this.#dataDir, HEARTBEAT_FILE)
+    if (isHeartbeatStale(heartbeatPath)) {
       return {found: false, reason: 'instance_stale'}
     }
 
@@ -112,35 +111,4 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
     }
   }
 
-  async #isHeartbeatFresh(): Promise<boolean> {
-    const heartbeatPath = join(this.#dataDir, HEARTBEAT_FILE)
-
-    try {
-      const content = await readFile(heartbeatPath, 'utf8')
-      const timestamp = Number(content.trim())
-
-      if (!Number.isFinite(timestamp) || timestamp <= 0) {
-        this.#logger.debug('Invalid heartbeat timestamp (not a valid number)')
-        return false
-      }
-
-      const age = Date.now() - timestamp
-      return age >= 0 && age < this.#heartbeatThresholdMs
-    } catch (error) {
-      // Log specific error types for debugging
-      if (error && typeof error === 'object' && 'code' in error) {
-        const code = (error as {code?: string}).code
-        if (code === 'ENOENT') {
-          this.#logger.debug('Heartbeat file not found')
-        } else if (code === 'EACCES') {
-          this.#logger.warn(`Permission denied reading heartbeat: ${heartbeatPath}`)
-        } else {
-          this.#logger.error(`Failed to read heartbeat: ${error}`)
-        }
-      } else {
-        this.#logger.error(`Failed to read heartbeat: ${error}`)
-      }
-      return false
-    }
-  }
 }

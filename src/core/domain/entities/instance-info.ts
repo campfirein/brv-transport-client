@@ -20,6 +20,8 @@ export type InstanceInfoJson = {
   port: number
   /** Timestamp when instance started (ms since epoch) */
   startedAt: number
+  /** CLI version that started this daemon (optional for backward compat) */
+  version?: string
 }
 
 /**
@@ -37,6 +39,7 @@ export type InstanceInfoJson = {
 export class InstanceInfo {
   public readonly pid: number
   public readonly port: number
+  public readonly version: string | undefined
 
   /**
    * Internal timestamp storage to ensure immutability.
@@ -44,9 +47,10 @@ export class InstanceInfo {
    */
   readonly #startedAtMs: number
 
-  private constructor(data: {pid: number; port: number; startedAtMs: number}) {
+  private constructor(data: {pid: number; port: number; startedAtMs: number; version?: string}) {
     this.pid = data.pid
     this.port = data.port
+    this.version = data.version
     this.#startedAtMs = data.startedAtMs
   }
 
@@ -61,11 +65,12 @@ export class InstanceInfo {
   /**
    * Creates a new instance info.
    */
-  public static create(data: {pid: number; port: number}): InstanceInfo {
+  public static create(data: {pid: number; port: number; version?: string}): InstanceInfo {
     return new InstanceInfo({
       pid: data.pid,
       port: data.port,
       startedAtMs: Date.now(),
+      version: data.version,
     })
   }
 
@@ -81,6 +86,7 @@ export class InstanceInfo {
       pid: json.pid,
       port: json.port,
       startedAtMs: json.startedAt,
+      version: json.version,
     })
   }
 
@@ -139,6 +145,7 @@ export class InstanceInfo {
       pid: this.pid,
       port: this.port,
       startedAt: this.#startedAtMs,
+      ...(this.version !== undefined && {version: this.version}),
     }
   }
 }
