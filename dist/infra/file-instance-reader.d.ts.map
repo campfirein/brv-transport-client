@@ -1,1 +1,0 @@
-{"version":3,"file":"file-instance-reader.d.ts","sourceRoot":"","sources":["../../infra/file-instance-reader.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAC,eAAe,EAAC,MAAM,yCAAyC,CAAA;AAG5E,OAAO,EAAC,YAAY,EAAwB,MAAM,0CAA0C,CAAA;AAqB5F;;;;;GAKG;AACH,qBAAa,kBAAmB,YAAW,eAAe;IACxD;;;OAGG;IACG,IAAI,CAAC,WAAW,EAAE,MAAM,GAAG,OAAO,CAAC,YAAY,GAAG,SAAS,CAAC;CAkBnE"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"i-reconnection-strategy.d.ts","sourceRoot":"","sources":["../../../core/interfaces/i-reconnection-strategy.ts"],"names":[],"mappings":"AAAA;;;;;;;GAOG;AACH,MAAM,WAAW,qBAAqB;IACpC;;;;OAIG;IACH,QAAQ,CAAC,OAAO,EAAE,MAAM,GAAG,MAAM,GAAG,SAAS,CAAA;IAE7C;;OAEG;IACH,KAAK,IAAI,IAAI,CAAA;IAEb;;;;OAIG;IACH,cAAc,CAAC,OAAO,EAAE,MAAM,GAAG,OAAO,CAAA;CACzC"}
