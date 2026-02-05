@@ -17,16 +17,18 @@ src/
 │   │   ├── events/                   # Event name constants & types
 │   │   ├── validators/               # Event name, room name, URL validators
 │   │   └── types.ts                  # Domain types
-│   └── interfaces/                   # 13 interface files (contracts)
+│   └── interfaces/                   # 15 interface files (contracts)
 │       ├── i-client.ts               # ITransportClient (main API)
 │       ├── i-client-factory.ts       # IClientFactory
 │       ├── i-client-factory-config.ts
 │       ├── i-instance-discovery.ts   # IInstanceDiscovery
+│       ├── i-instance-manager.ts     # IGlobalInstanceManager
 │       ├── i-connection-state.ts     # IConnectionStateManager
 │       ├── i-event-dispatcher.ts     # IEventDispatcher
 │       ├── i-room-manager.ts         # IRoomManager
 │       ├── i-reconnection-strategy.ts
 │       ├── i-force-reconnect-manager.ts
+│       ├── i-spawn-lock.ts          # ISpawnLock
 │       ├── i-wake-detector.ts
 │       ├── i-client-logger.ts
 │       ├── i-socket.ts              # Internal only
@@ -34,8 +36,11 @@ src/
 └── infra/
     ├── socket-io-client.ts           # TransportClient facade
     ├── client-factory.ts             # TransportClientFactory + connectToTransport()
+    ├── daemon-connector.ts            # connectToDaemon() — ensure + connect + register
+    ├── daemon-discovery-sync.ts       # discoverDaemon() synchronous health check
     ├── daemon-health.ts               # checkDaemonHealth() shared health check
-    ├── daemon-instance-discovery.ts   # DaemonInstanceDiscovery
+    ├── daemon-instance-discovery.ts   # DaemonInstanceDiscovery (async, for factory)
+    ├── daemon-spawner.ts              # ensureDaemonRunning() — spawn + lock + poll
     ├── connection-state-manager.ts
     ├── event-dispatcher.ts
     ├── room-manager.ts
@@ -44,7 +49,11 @@ src/
     ├── wake-detector.ts               # TimeBasedWakeDetector
     ├── no-op-client-logger.ts
     ├── global-data-path.ts            # getGlobalDataDir()
+    ├── global-instance-manager.ts     # GlobalInstanceManager (daemon.json CRUD)
+    ├── heartbeat-utils.ts             # isHeartbeatStale()
     ├── process-utils.ts               # isProcessAlive()
+    ├── resolve-server-path.ts         # resolveServerPath()
+    ├── spawn-lock.ts                  # SpawnLock (file-based mutex)
     ├── schemas/                       # Zod schemas for runtime validation
     │   ├── schemas.ts
     │   └── types.ts
@@ -59,15 +68,23 @@ test/
     ├── socket-io-client.test.ts
     ├── socket-io-client-edge-cases.test.ts
     ├── client-factory.test.ts
+    ├── daemon-connector.test.ts
+    ├── daemon-discovery-sync.test.ts
+    ├── daemon-health.test.ts
     ├── daemon-instance-discovery.test.ts
+    ├── daemon-spawner.test.ts
     ├── connection-state-manager.test.ts
     ├── event-dispatcher.test.ts
     ├── room-manager.test.ts
     ├── force-reconnect-manager.test.ts
-    ├── reconnection-strategy.test.ts
-    ├── wake-detector.test.ts
-    ├── process-utils.test.ts
     ├── global-data-path.test.ts
+    ├── global-instance-manager.test.ts
+    ├── heartbeat-utils.test.ts
+    ├── process-utils.test.ts
+    ├── reconnection-strategy.test.ts
+    ├── resolve-server-path.test.ts
+    ├── spawn-lock.test.ts
+    ├── wake-detector.test.ts
     ├── schemas/schemas.test.ts
     └── utils/deep-freeze.test.ts
 ```
@@ -147,7 +164,7 @@ Advanced usage via `TransportClientFactory` with custom `IInstanceDiscovery`, `I
 ```bash
 npm run build      # tsc → dist/
 npm run typecheck   # tsc --noEmit
-npm test           # mocha (20 test files, ~495 tests)
+npm test           # mocha (28 test files)
 npm run lint       # eslint + prettier
 ```
 

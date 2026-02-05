@@ -4,8 +4,6 @@
 
 ```bash
 npm test                    # all tests
-npm test -- --watch         # watch mode
-npm run test:coverage       # with coverage report
 ```
 
 Run a single file:
@@ -36,20 +34,28 @@ test/
     ├── socket-io-client.test.ts
     ├── socket-io-client-edge-cases.test.ts
     ├── client-factory.test.ts
+    ├── daemon-connector.test.ts
+    ├── daemon-discovery-sync.test.ts
+    ├── daemon-health.test.ts
     ├── daemon-instance-discovery.test.ts
+    ├── daemon-spawner.test.ts
     ├── connection-state-manager.test.ts
     ├── event-dispatcher.test.ts
     ├── room-manager.test.ts
     ├── force-reconnect-manager.test.ts
-    ├── reconnection-strategy.test.ts
-    ├── wake-detector.test.ts
-    ├── process-utils.test.ts
     ├── global-data-path.test.ts
+    ├── global-instance-manager.test.ts
+    ├── heartbeat-utils.test.ts
+    ├── process-utils.test.ts
+    ├── reconnection-strategy.test.ts
+    ├── resolve-server-path.test.ts
+    ├── spawn-lock.test.ts
+    ├── wake-detector.test.ts
     ├── schemas/schemas.test.ts
     └── utils/deep-freeze.test.ts
 ```
 
-20 test files, ~495 tests.
+28 test files.
 
 ## Conventions
 

@@ -1,5 +1,5 @@
 import {expect} from 'chai'
-import {mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync} from 'node:fs'
+import {mkdtempSync, realpathSync, rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
