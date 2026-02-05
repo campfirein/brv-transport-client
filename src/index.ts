@@ -312,6 +312,9 @@ export {ensureDaemonRunning, type EnsureDaemonResult} from './infra/daemon-spawn
 // Daemon lifecycle - Sync discovery (health check)
 export {discoverDaemon, type DaemonStatus} from './infra/daemon-discovery-sync.js'
 
+// Daemon lifecycle - Health check
+export {checkDaemonHealth, type DaemonHealthResult} from './infra/daemon-health.js'
+
 // Daemon lifecycle - Infrastructure
 export {GlobalInstanceManager} from './infra/global-instance-manager.js'
 export {isHeartbeatStale} from './infra/heartbeat-utils.js'

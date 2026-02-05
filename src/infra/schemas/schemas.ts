@@ -20,6 +20,7 @@
 import {z} from 'zod'
 
 import {CLIENT_TYPES} from '../../core/domain/types.js'
+import {DAEMON_PORT_MAX, DAEMON_PORT_MIN} from '../../constants.js'
 
 // ============================================================================
 // Common Enums and Base Types
@@ -126,7 +127,7 @@ export const TaskErrorDataSchema = z.object({
  */
 export const DaemonInstanceSchema = z.object({
   pid: z.number().int().positive(),
-  port: z.number().int().min(1024).max(65535),
+  port: z.number().int().min(DAEMON_PORT_MIN).max(DAEMON_PORT_MAX),
   startedAt: z.number().int().positive(),
   version: z.string().optional(),
 })
@@ -377,7 +378,7 @@ export const CipherExecutionTerminatedSchema = z.object({
   turnCount: z.number().int().nonnegative(),
   toolCallsExecuted: z.number().int().nonnegative(),
   durationMs: z.number().int().nonnegative().optional(),
-  error: z.any().optional(),
+  error: z.unknown().optional(),
 })
 
 /**

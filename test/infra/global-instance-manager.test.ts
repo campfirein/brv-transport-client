@@ -20,19 +20,19 @@ describe('GlobalInstanceManager', () => {
   describe('acquire()', () => {
     it('should acquire when no instance exists', () => {
       const manager = new GlobalInstanceManager({dataDir: testDir})
-      const result = manager.acquire(37_847, '1.6.0')
+      const result = manager.acquire(49_847, '1.6.0')
 
       expect(result.acquired).to.be.true
       if (result.acquired) {
         expect(result.instance.pid).to.equal(process.pid)
-        expect(result.instance.port).to.equal(37_847)
+        expect(result.instance.port).to.equal(49_847)
         expect(result.instance.version).to.equal('1.6.0')
       }
     })
 
     it('should write daemon.json atomically', () => {
       const manager = new GlobalInstanceManager({dataDir: testDir})
-      manager.acquire(37_847, '1.6.0')
+      manager.acquire(49_847, '1.6.0')
 
       expect(existsSync(join(testDir, DAEMON_INSTANCE_FILE))).to.be.true
     })
@@ -40,10 +40,10 @@ describe('GlobalInstanceManager', () => {
     it('should fail when PID is alive', () => {
       const manager = new GlobalInstanceManager({dataDir: testDir})
       // First acquire succeeds
-      manager.acquire(37_847, '1.6.0')
+      manager.acquire(49_847, '1.6.0')
 
       // Second acquire should fail (current process PID is alive)
-      const result = manager.acquire(37_848, '1.6.0')
+      const result = manager.acquire(49_848, '1.6.0')
       expect(result.acquired).to.be.false
       if (!result.acquired) {
         expect(result.reason).to.equal('already_running')
@@ -54,15 +54,15 @@ describe('GlobalInstanceManager', () => {
       // Write stale instance with dead PID
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: 999_999_999, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+        JSON.stringify({pid: 999_999_999, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
       )
 
       const manager = new GlobalInstanceManager({dataDir: testDir})
-      const result = manager.acquire(37_848, '1.6.0')
+      const result = manager.acquire(49_848, '1.6.0')
 
       expect(result.acquired).to.be.true
       if (result.acquired) {
-        expect(result.instance.port).to.equal(37_848)
+        expect(result.instance.port).to.equal(49_848)
       }
     })
   })
@@ -74,7 +74,7 @@ describe('GlobalInstanceManager', () => {
     })
 
     it('should return instance info when file is valid', () => {
-      const data = {pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}
+      const data = {pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}
       writeFileSync(join(testDir, DAEMON_INSTANCE_FILE), JSON.stringify(data))
 
       const manager = new GlobalInstanceManager({dataDir: testDir})
@@ -82,7 +82,7 @@ describe('GlobalInstanceManager', () => {
 
       expect(loaded).to.not.be.undefined
       expect(loaded!.pid).to.equal(process.pid)
-      expect(loaded!.port).to.equal(37_847)
+      expect(loaded!.port).to.equal(49_847)
       expect(loaded!.version).to.equal('1.6.0')
     })
 
@@ -104,7 +104,7 @@ describe('GlobalInstanceManager', () => {
   describe('release()', () => {
     it('should delete daemon.json when PID matches', () => {
       const manager = new GlobalInstanceManager({dataDir: testDir})
-      manager.acquire(37_847, '1.6.0')
+      manager.acquire(49_847, '1.6.0')
 
       expect(existsSync(join(testDir, DAEMON_INSTANCE_FILE))).to.be.true
 
@@ -117,7 +117,7 @@ describe('GlobalInstanceManager', () => {
       // Write instance with different PID
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: 999_999_999, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: 999_999_999, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
 
       const manager = new GlobalInstanceManager({dataDir: testDir})

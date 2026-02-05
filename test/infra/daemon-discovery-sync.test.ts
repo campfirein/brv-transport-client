@@ -21,7 +21,7 @@ describe('daemon-discovery-sync', () => {
     it('should return running=true when daemon is healthy', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -30,7 +30,7 @@ describe('daemon-discovery-sync', () => {
       expect(status.running).to.be.true
       if (status.running) {
         expect(status.pid).to.equal(process.pid)
-        expect(status.port).to.equal(37_847)
+        expect(status.port).to.equal(49_847)
       }
     })
 
@@ -46,7 +46,7 @@ describe('daemon-discovery-sync', () => {
     it('should return pid_dead when PID is not alive', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: 999_999_999, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: 999_999_999, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
 
       const status = discoverDaemon({dataDir: testDir})
@@ -60,7 +60,7 @@ describe('daemon-discovery-sync', () => {
     it('should return heartbeat_stale when heartbeat is missing', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       // No heartbeat file written
 
@@ -75,7 +75,7 @@ describe('daemon-discovery-sync', () => {
     it('should return heartbeat_stale when heartbeat is old', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now() - 20_000))
 
@@ -90,7 +90,7 @@ describe('daemon-discovery-sync', () => {
     it('should return version_mismatch when expectedVersion differs', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -106,7 +106,7 @@ describe('daemon-discovery-sync', () => {
     it('should return running when expectedVersion matches', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -118,7 +118,7 @@ describe('daemon-discovery-sync', () => {
     it('should skip version check when expectedVersion is not provided', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 

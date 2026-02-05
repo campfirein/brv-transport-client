@@ -109,12 +109,13 @@ export class InstanceInfo {
       throw new InvalidInstanceDataError('pid must be a positive integer', 'pid', obj.pid)
     }
 
-    // Validate port
+    // Validate port — IANA dynamic/private range (49152-65535)
+    // Must match DAEMON_PORT_MIN/MAX in constants.ts
     if (typeof obj.port !== 'number') {
       throw new InvalidInstanceDataError('port must be a number', 'port', obj.port)
     }
-    if (!Number.isInteger(obj.port) || obj.port <= 0 || obj.port > 65535) {
-      throw new InvalidInstanceDataError('port must be a valid port number (1-65535)', 'port', obj.port)
+    if (!Number.isInteger(obj.port) || obj.port < 49152 || obj.port > 65535) {
+      throw new InvalidInstanceDataError('port must be in dynamic/private range (49152-65535)', 'port', obj.port)
     }
 
     // Validate startedAt

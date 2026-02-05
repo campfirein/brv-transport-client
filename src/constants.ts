@@ -41,3 +41,14 @@ export const DAEMON_READY_POLL_INTERVAL_MS = 100 // 100ms between polls
 // Daemon spawner — budget allocation for stop + poll
 export const DAEMON_STOP_BUDGET_MS = 3000 // 3s max to stop old daemon
 export const DAEMON_STOP_POLL_INTERVAL_MS = 100 // 100ms between death checks
+
+// Daemon port range (IANA dynamic/private ports, RFC 6335)
+export const DAEMON_PORT_MIN = 49152
+export const DAEMON_PORT_MAX = 65535
+
+// TransportClient internal timing
+export const TRANSPORT_IS_CONNECTED_TIMEOUT_MS = 2000 // Default ping timeout for isConnected()
+export const TRANSPORT_RECONNECT_WAIT_CONNECTED_MS = 5000 // Max wait for socket.connected after reconnect
+export const TRANSPORT_RECONNECT_POLL_INTERVAL_MS = 10 // Poll interval during reconnect wait
+export const TRANSPORT_ROOM_REJOIN_SETTLE_MS = 50 // Delay before retry room rejoin after force reconnect
+export const TRANSPORT_REGISTRATION_TIMEOUT_MS = 3000 // Timeout for client:register ack

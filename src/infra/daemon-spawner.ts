@@ -170,7 +170,7 @@ async function gracefullyStopDaemon(pid: number, deadline: number, pollIntervalM
   }
 
   // SIGTERM didn't work — force kill to prevent two daemons running simultaneously.
-  // Without this, the old daemon leaks until idle timeout (30 min) or system restart.
+  // Without this, the old daemon leaks until the daemon's own idle timeout or system restart.
   try {
     process.kill(pid, 'SIGKILL')
   } catch {

@@ -181,7 +181,7 @@ describe('checkServerStatus()', () => {
       path.join(testDir, DAEMON_INSTANCE_FILE),
       JSON.stringify({
         pid: 999999999, // Non-existent PID
-        port: 9847,
+        port: 49_847,
         startedAt: Date.now(),
       }),
     )
@@ -202,7 +202,7 @@ describe('checkServerStatus()', () => {
       path.join(testDir, DAEMON_INSTANCE_FILE),
       JSON.stringify({
         pid: process.pid, // Current process is alive
-        port: 9847,
+        port: 49_847,
         startedAt: Date.now(),
       }),
     )
@@ -215,7 +215,7 @@ describe('checkServerStatus()', () => {
     expect(status.running).to.be.true
     if (status.running) {
       expect(status.instance.pid).to.equal(process.pid)
-      expect(status.instance.port).to.equal(9847)
+      expect(status.instance.port).to.equal(49_847)
       // testDir has no .brv/ directory, so projectRoot is undefined
       expect(status.projectRoot).to.be.undefined
     }

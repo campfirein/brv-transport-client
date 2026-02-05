@@ -6,9 +6,8 @@ import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 
 import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../constants.js'
 import {InstanceInfo} from '../core/domain/entities/instance-info.js'
+import {checkDaemonHealth} from './daemon-health.js'
 import {getGlobalDataDir} from './global-data-path.js'
-import {isHeartbeatStale} from './heartbeat-utils.js'
-import {isProcessAlive} from './process-utils.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
 import {DaemonInstanceSchema} from './schemas/schemas.js'
 
@@ -38,13 +37,12 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       return {found: false, reason: 'no_instance'}
     }
 
-    if (!isProcessAlive(instance.pid)) {
-      return {found: false, reason: 'instance_crashed'}
-    }
-
     const heartbeatPath = join(this.#dataDir, HEARTBEAT_FILE)
-    if (isHeartbeatStale(heartbeatPath)) {
-      return {found: false, reason: 'instance_stale'}
+    const health = checkDaemonHealth(instance.pid, heartbeatPath)
+
+    if (!health.healthy) {
+      const reason = health.reason === 'pid_dead' ? 'instance_crashed' : 'instance_stale'
+      return {found: false, reason}
     }
 
     const projectRoot = await this.#findProjectRoot(fromDir)

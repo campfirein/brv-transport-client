@@ -28,7 +28,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -42,7 +42,7 @@ describe('DaemonInstanceDiscovery', () => {
       expect(result.found).to.be.true
       if (result.found) {
         expect(result.instance.pid).to.equal(process.pid)
-        expect(result.instance.port).to.equal(9847)
+        expect(result.instance.port).to.equal(49_847)
         expect(result.projectRoot).to.be.undefined
       }
     })
@@ -53,7 +53,7 @@ describe('DaemonInstanceDiscovery', () => {
       // Create valid daemon.json + heartbeat
       await fs.writeFile(
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now()}),
       )
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -78,7 +78,7 @@ describe('DaemonInstanceDiscovery', () => {
       // Create valid daemon.json + heartbeat
       await fs.writeFile(
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now()}),
       )
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -99,7 +99,7 @@ describe('DaemonInstanceDiscovery', () => {
       // Create valid daemon.json + heartbeat
       await fs.writeFile(
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 9847, startedAt: Date.now()}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now()}),
       )
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -133,7 +133,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: 999999999, // Very unlikely to exist
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -157,7 +157,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -182,7 +182,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -240,7 +240,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: 'not-a-number',
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -282,7 +282,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -306,7 +306,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -330,7 +330,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -359,7 +359,7 @@ describe('DaemonInstanceDiscovery', () => {
         path.join(testDataDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({
           pid: process.pid,
-          port: 9847,
+          port: 49_847,
           startedAt: Date.now(),
         }),
       )
@@ -396,7 +396,7 @@ describe('DaemonInstanceDiscovery', () => {
           path.join(customDir, DAEMON_INSTANCE_FILE),
           JSON.stringify({
             pid: process.pid,
-            port: 9847,
+            port: 49_847,
             startedAt: Date.now(),
           }),
         )

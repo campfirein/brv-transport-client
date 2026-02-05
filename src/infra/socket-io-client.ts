@@ -13,10 +13,14 @@ import type {IWakeDetector} from '../core/interfaces/i-wake-detector.js'
 import {
   TRANSPORT_CONNECT_TIMEOUT_MS,
   TRANSPORT_DEFAULT_TRANSPORTS,
+  TRANSPORT_IS_CONNECTED_TIMEOUT_MS,
+  TRANSPORT_RECONNECT_POLL_INTERVAL_MS,
+  TRANSPORT_RECONNECT_WAIT_CONNECTED_MS,
   TRANSPORT_RECONNECTION_ATTEMPTS,
   TRANSPORT_RECONNECTION_DELAY_MAX_MS,
   TRANSPORT_RECONNECTION_DELAY_MS,
   TRANSPORT_REQUEST_TIMEOUT_MS,
+  TRANSPORT_ROOM_REJOIN_SETTLE_MS,
   TRANSPORT_ROOM_TIMEOUT_MS,
 } from '../constants.js'
 import {
@@ -477,9 +481,9 @@ export class TransportClient implements ITransportClient {
     return this.socket?.id
   }
 
-  public async isConnected(timeoutMs: number = 2000): Promise<boolean> {
+  public async isConnected(timeoutMs: number = TRANSPORT_IS_CONNECTED_TIMEOUT_MS): Promise<boolean> {
     // Validate timeout if explicitly provided (non-default)
-    if (timeoutMs !== 2000) {
+    if (timeoutMs !== TRANSPORT_IS_CONNECTED_TIMEOUT_MS) {
       this.validateTimeout(timeoutMs, 'timeoutMs')
     }
 
@@ -633,8 +637,9 @@ export class TransportClient implements ITransportClient {
       this.#stateManager.setState('connecting')
       this.#initialConnectInProgress = true
 
-      // Build query: merge cwd (default) with user-provided query params
-      // Note: userQuery can override cwd for advanced use cases (e.g., MCP server handling specific projects)
+      // Build query: merge cwd (default) with user-provided query params.
+      // WARNING: userQuery can override cwd. This is intentional for advanced use cases
+      // (e.g., MCP server handling specific projects). See CLAUDE.md "Directory & Path Concepts".
       const baseQuery: Record<string, string> = {}
       if (this.#config.cwd) {
         baseQuery.cwd = this.#config.cwd
@@ -775,12 +780,12 @@ export class TransportClient implements ITransportClient {
               clearInterval(checkInterval)
               this.log('Socket now connected after waiting')
               resolve(true)
-            } else if (Date.now() - startTime > 5000) {
+            } else if (Date.now() - startTime > TRANSPORT_RECONNECT_WAIT_CONNECTED_MS) {
               clearInterval(checkInterval)
-              this.log('Timeout waiting for socket.connected (5s), proceeding anyway')
+              this.log(`Timeout waiting for socket.connected (${TRANSPORT_RECONNECT_WAIT_CONNECTED_MS}ms), proceeding anyway`)
               resolve(false)
             }
-          }, 10)
+          }, TRANSPORT_RECONNECT_POLL_INTERVAL_MS)
         })
       }
 
@@ -890,7 +895,7 @@ export class TransportClient implements ITransportClient {
         if (reconnectedSocket?.connected && this.socket === reconnectedSocket) {
           this.#roomManager.rejoinRooms()
         }
-      }, 50)
+      }, TRANSPORT_ROOM_REJOIN_SETTLE_MS)
     }
   }
 

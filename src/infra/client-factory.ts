@@ -15,6 +15,7 @@ import {
   InstanceStaleError,
   NoInstanceRunningError,
 } from '../core/domain/errors/connection-error.js'
+import {TRANSPORT_REGISTRATION_TIMEOUT_MS} from '../constants.js'
 import {ClientEventNames} from '../core/domain/events/event-names.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
 import {DaemonInstanceDiscovery} from './daemon-instance-discovery.js'
@@ -235,12 +236,16 @@ export class TransportClientFactory implements IClientFactory {
 
   /**
    * Attempts HTTP warm-up to trigger sandbox network permission.
-   * Returns true if warm-up succeeded (status 2xx), false otherwise.
+   * Uses hardcoded /socket.io/ path — the actual path doesn't matter since
+   * any HTTP request to host:port triggers the sandbox permission prompt.
+   * Returns true if warm-up received a 2xx response, false otherwise.
    */
   private async httpWarmUp(url: string): Promise<boolean> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.#warmUpTimeoutMs)
 
+    // Path intentionally hardcoded — we only need to trigger the sandbox
+    // network permission prompt, not hit the actual Socket.IO endpoint.
     const response = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
       method: 'GET',
       signal: controller.signal,
@@ -327,7 +332,7 @@ export class TransportClientFactory implements IClientFactory {
       this.log(`Registering as ${clientType}${options?.projectPath ? ` (project=${options.projectPath})` : ''}`)
 
       const response = await client.requestWithAck<ClientRegisterResponse>(ClientEventNames.REGISTER, payload, {
-        timeout: 3000,
+        timeout: TRANSPORT_REGISTRATION_TIMEOUT_MS,
       })
 
       // Validate response with Zod

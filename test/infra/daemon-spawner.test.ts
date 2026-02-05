@@ -24,7 +24,7 @@ describe('daemon-spawner', () => {
 
   describe('ensureDaemonRunning()', () => {
     it('should return immediately when daemon is already running', async () => {
-      const port = 37_847
+      const port = 49_847
       // Simulate a running daemon: valid instance + fresh heartbeat + alive PID
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
@@ -53,7 +53,7 @@ describe('daemon-spawner', () => {
       setTimeout(() => {
         writeFileSync(
           join(testDir, DAEMON_INSTANCE_FILE),
-          JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+          JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
         )
         writeFileSync(join(testDir, 'heartbeat'), String(Date.now()))
       }, 20)
@@ -63,7 +63,7 @@ describe('daemon-spawner', () => {
       expect(result.success).to.be.true
       if (result.success) {
         expect(result.started).to.be.false
-        expect(result.info.port).to.equal(37_847)
+        expect(result.info.port).to.equal(49_847)
       }
     })
 
@@ -98,7 +98,7 @@ describe('daemon-spawner', () => {
       // Write daemon files — these will be found on the re-check after lock acquisition
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 9850, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_850, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, 'heartbeat'), String(Date.now()))
 
@@ -108,7 +108,7 @@ describe('daemon-spawner', () => {
       expect(result.success).to.be.true
       if (result.success) {
         expect(result.started).to.be.false
-        expect(result.info.port).to.equal(9850)
+        expect(result.info.port).to.equal(49_850)
       }
     })
 
@@ -117,7 +117,7 @@ describe('daemon-spawner', () => {
       // Write stale daemon files (dead PID)
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: deadPid, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+        JSON.stringify({pid: deadPid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now() - 30_000))
 
@@ -132,7 +132,7 @@ describe('daemon-spawner', () => {
     it('should return immediately when version matches running daemon', async () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
-        JSON.stringify({pid: process.pid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -141,7 +141,7 @@ describe('daemon-spawner', () => {
       expect(result.success).to.be.true
       if (result.success) {
         expect(result.started).to.be.false
-        expect(result.info.port).to.equal(37_847)
+        expect(result.info.port).to.equal(49_847)
       }
     })
 
@@ -160,7 +160,7 @@ describe('daemon-spawner', () => {
         // Simulate old-version daemon: valid instance + fresh heartbeat
         writeFileSync(
           join(testDir, DAEMON_INSTANCE_FILE),
-          JSON.stringify({pid: childPid, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+          JSON.stringify({pid: childPid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
         )
         writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -216,7 +216,7 @@ describe('daemon-spawner', () => {
         // Simulate daemon with alive PID but stale heartbeat (>15s old)
         writeFileSync(
           join(testDir, DAEMON_INSTANCE_FILE),
-          JSON.stringify({pid: childPid, port: 37_847, startedAt: Date.now(), version: '1.6.0'}),
+          JSON.stringify({pid: childPid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
         )
         writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now() - 20_000))
 
@@ -270,7 +270,7 @@ describe('daemon-spawner', () => {
         // Simulate old-version daemon
         writeFileSync(
           join(testDir, DAEMON_INSTANCE_FILE),
-          JSON.stringify({pid: childPid, port: 37_847, startedAt: Date.now(), version: '1.5.0'}),
+          JSON.stringify({pid: childPid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
         )
         writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
@@ -278,7 +278,7 @@ describe('daemon-spawner', () => {
         setTimeout(() => {
           writeFileSync(
             join(testDir, DAEMON_INSTANCE_FILE),
-            JSON.stringify({pid: process.pid, port: 37_848, startedAt: Date.now(), version: '1.6.0'}),
+            JSON.stringify({pid: process.pid, port: 49_848, startedAt: Date.now(), version: '1.6.0'}),
           )
           writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
         }, 30)
@@ -299,7 +299,7 @@ describe('daemon-spawner', () => {
         // New daemon detected successfully
         expect(result.success).to.be.true
         if (result.success) {
-          expect(result.info.port).to.equal(37_848)
+          expect(result.info.port).to.equal(49_848)
           expect(result.started).to.be.true
         }
       } finally {

@@ -13,7 +13,7 @@ describe('daemon-connector', () => {
 
   beforeEach(() => {
     ensureDaemonRunningStub = stub().resolves({
-      info: {pid: 1234, port: 37_847},
+      info: {pid: 1234, port: 49_847},
       started: false,
       success: true,
     })

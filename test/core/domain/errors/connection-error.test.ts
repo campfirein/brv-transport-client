@@ -98,27 +98,27 @@ describe('Connection Errors', () => {
     })
 
     it('should include port in message when provided', () => {
-      const error = new ConnectionFailedError(9847)
+      const error = new ConnectionFailedError(49_847)
 
-      expect(error.message).to.equal('Failed to connect to ByteRover instance on port 9847')
+      expect(error.message).to.equal('Failed to connect to ByteRover instance on port 49847')
     })
 
     it('should include original error message when provided', () => {
       const originalError = new Error('Connection refused')
-      const error = new ConnectionFailedError(9847, originalError)
+      const error = new ConnectionFailedError(49_847, originalError)
 
-      expect(error.message).to.equal('Failed to connect to ByteRover instance on port 9847: Connection refused')
+      expect(error.message).to.equal('Failed to connect to ByteRover instance on port 49847: Connection refused')
     })
 
     it('should store port property', () => {
-      const error = new ConnectionFailedError(9847)
+      const error = new ConnectionFailedError(49_847)
 
-      expect(error.port).to.equal(9847)
+      expect(error.port).to.equal(49_847)
     })
 
     it('should store originalError property', () => {
       const originalError = new Error('Connection refused')
-      const error = new ConnectionFailedError(9847, originalError)
+      const error = new ConnectionFailedError(49_847, originalError)
 
       expect(error.originalError).to.equal(originalError)
     })

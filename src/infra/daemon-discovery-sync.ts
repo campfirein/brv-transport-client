@@ -3,10 +3,9 @@ import {join} from 'node:path'
 import type {IGlobalInstanceManager} from '../core/interfaces/i-instance-manager.js'
 
 import {HEARTBEAT_FILE} from '../constants.js'
+import {checkDaemonHealth} from './daemon-health.js'
 import {getGlobalDataDir} from './global-data-path.js'
 import {GlobalInstanceManager} from './global-instance-manager.js'
-import {isHeartbeatStale} from './heartbeat-utils.js'
-import {isProcessAlive} from './process-utils.js'
 
 export type DaemonStatus =
   | {actualVersion?: string; expectedVersion: string; pid: number; reason: 'version_mismatch'; running: false}
@@ -44,23 +43,24 @@ export function discoverDaemon(options?: {
     return {reason: 'no_instance', running: false}
   }
 
-  if (!isProcessAlive(instance.pid)) {
-    return {pid: instance.pid, reason: 'pid_dead', running: false}
-  }
-
   const heartbeatPath = join(dataDir, HEARTBEAT_FILE)
-  if (isHeartbeatStale(heartbeatPath)) {
-    return {pid: instance.pid, reason: 'heartbeat_stale', running: false}
-  }
+  const health = checkDaemonHealth(instance.pid, heartbeatPath, {
+    actualVersion: instance.version,
+    expectedVersion: options?.expectedVersion,
+  })
 
-  if (options?.expectedVersion && instance.version !== options.expectedVersion) {
-    return {
-      actualVersion: instance.version,
-      expectedVersion: options.expectedVersion,
-      pid: instance.pid,
-      reason: 'version_mismatch',
-      running: false,
+  if (!health.healthy) {
+    if (health.reason === 'version_mismatch') {
+      return {
+        actualVersion: health.actualVersion,
+        expectedVersion: health.expectedVersion,
+        pid: instance.pid,
+        reason: 'version_mismatch',
+        running: false,
+      }
     }
+
+    return {pid: instance.pid, reason: health.reason, running: false}
   }
 
   return {pid: instance.pid, port: instance.port, running: true}

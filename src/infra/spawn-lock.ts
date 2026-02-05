@@ -65,7 +65,7 @@ export class SpawnLock implements ISpawnLock {
       return {acquired: false, reason: 'write_failed'}
     }
 
-    // Read-back verification: defend against concurrent rename race.
+    // Read-back verification: detect loss in concurrent rename race.
     // Two processes can both rename successfully (POSIX rename is atomic
     // but overwrites silently). Verify our PID is actually in the file.
     if (!this.verifyOwnership()) {

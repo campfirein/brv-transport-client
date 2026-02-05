@@ -33,39 +33,39 @@ describe('Transport Errors', () => {
 
   describe('TransportConnectionError', () => {
     it('should have message with URL', () => {
-      const error = new TransportConnectionError('http://127.0.0.1:9847')
+      const error = new TransportConnectionError('http://127.0.0.1:49847')
 
-      expect(error.message).to.equal('Connection failed to http://127.0.0.1:9847')
+      expect(error.message).to.equal('Connection failed to http://127.0.0.1:49847')
     })
 
     it('should include original error message when provided', () => {
       const originalError = new Error('ECONNREFUSED')
-      const error = new TransportConnectionError('http://127.0.0.1:9847', originalError)
+      const error = new TransportConnectionError('http://127.0.0.1:49847', originalError)
 
-      expect(error.message).to.equal('Connection failed to http://127.0.0.1:9847: ECONNREFUSED')
+      expect(error.message).to.equal('Connection failed to http://127.0.0.1:49847: ECONNREFUSED')
     })
 
     it('should store url property', () => {
-      const error = new TransportConnectionError('http://127.0.0.1:9847')
+      const error = new TransportConnectionError('http://127.0.0.1:49847')
 
-      expect(error.url).to.equal('http://127.0.0.1:9847')
+      expect(error.url).to.equal('http://127.0.0.1:49847')
     })
 
     it('should store originalError property', () => {
       const originalError = new Error('ECONNREFUSED')
-      const error = new TransportConnectionError('http://127.0.0.1:9847', originalError)
+      const error = new TransportConnectionError('http://127.0.0.1:49847', originalError)
 
       expect(error.originalError).to.equal(originalError)
     })
 
     it('should have correct name', () => {
-      const error = new TransportConnectionError('http://127.0.0.1:9847')
+      const error = new TransportConnectionError('http://127.0.0.1:49847')
 
       expect(error.name).to.equal('TransportConnectionError')
     })
 
     it('should be an instance of TransportError', () => {
-      const error = new TransportConnectionError('http://127.0.0.1:9847')
+      const error = new TransportConnectionError('http://127.0.0.1:49847')
 
       expect(error).to.be.instanceOf(TransportError)
     })

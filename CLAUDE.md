@@ -34,6 +34,7 @@ src/
 └── infra/
     ├── socket-io-client.ts           # TransportClient facade
     ├── client-factory.ts             # TransportClientFactory + connectToTransport()
+    ├── daemon-health.ts               # checkDaemonHealth() shared health check
     ├── daemon-instance-discovery.ts   # DaemonInstanceDiscovery
     ├── connection-state-manager.ts
     ├── event-dispatcher.ts
@@ -116,6 +117,8 @@ Return: { client, projectRoot? }
 ```
 
 **Key distinction:** `projectRoot` is discovered (walk-up from `fromDir`), while `projectPath` is explicitly provided by the caller in registration options. MCP servers running globally have no `.brv/` directory, so `projectRoot` is `undefined` — they learn the project path from task payloads (`clientCwd` field).
+
+**Note:** `socketOptions.query` can override `cwd` during handshake. This is intentional for advanced use cases like MCP servers that need to set a different working directory per connection. Exercise caution — no warning is logged when override occurs.
 
 ## Key Design Decisions
 
