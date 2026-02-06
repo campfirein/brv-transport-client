@@ -29,7 +29,7 @@ import {
   TokenUsageSchema,
   TodoItemSchema,
   TaskErrorDataSchema,
-} from '../../../infra/schemas/schemas.js'
+} from '../../../src/infra/schemas/schemas.js'
 
 describe('Transport Schemas', () => {
   describe('Common Schemas', () => {

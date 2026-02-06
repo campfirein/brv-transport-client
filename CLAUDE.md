@@ -1,732 +1,171 @@
-# brv-transport-client Architecture
+# brv-transport-client
 
-This document provides a comprehensive overview of the brv-transport-client architecture for developers and AI assistants (like Claude).
+TypeScript Socket.IO transport client for ByteRover. Clean Architecture with 3-layer separation.
 
-## Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Layer Architecture](#layer-architecture)
-- [Component Diagram](#component-diagram)
-- [Design Patterns](#design-patterns)
-- [Architecture Decision Records](#architecture-decision-records)
-
-## Architecture Overview
-
-The brv-transport-client is a production-grade TypeScript library implementing a real-time transport client using Socket.IO. It follows **Clean Architecture** principles with strict layer separation and **SOLID** design principles.
-
-### Key Characteristics
-
-- **Clean Architecture**: 3-layer separation (Domain, Interfaces, Infrastructure)
-- **Zero Dependency Violations**: Core layer has no external dependencies
-- **Type-Safe**: Full TypeScript strict mode with Zod runtime validation
-- **Race Condition Mitigation**: Connection ID tracking, promise mutex, AbortController
-- **Memory Leak Prevention**: Comprehensive cleanup with max pending handler limits
-- **Production Ready**: Comprehensive test suite with domain validators at 1:1 coverage, infrastructure tests ongoing
-
-## Layer Architecture
-
-```mermaid
-graph TB
-    subgraph "Public API"
-        INDEX[index.ts<br/>Exports all public types & classes]
-    end
-
-    subgraph "Infrastructure Layer (infra/)"
-        CLIENT[TransportClient<br/>Socket.IO Facade]
-        STATE[ConnectionStateManager<br/>State & Observers]
-        EVENTS[EventDispatcher<br/>Event Subscriptions]
-        ROOMS[RoomManager<br/>Room Join/Leave/Rejoin]
-        RECONNECT[ForceReconnectManager<br/>Reconnection Logic]
-        STRATEGY[ExponentialBackoffStrategy<br/>Backoff Algorithm]
-        WAKE[TimeBasedWakeDetector<br/>System Wake Detection]
-        SCHEMAS[Zod Schemas<br/>Runtime Validation]
-    end
-
-    subgraph "Interface Layer (core/interfaces/)"
-        ICLIENT[ITransportClient]
-        ISTATE[IConnectionStateManager]
-        IEVENT[IEventDispatcher]
-        IROOM[IRoomManager]
-        IRECONNECT[IReconnectionStrategy]
-        IWAKE[IWakeDetector]
-        ILOGGER[IClientLogger]
-        ISOCKET[ISocket]
-    end
-
-    subgraph "Domain Layer (core/domain/)"
-        ENTITIES[Entities<br/>InstanceInfo]
-        ERRORS[Errors<br/>22 Error Classes]
-        VALIDATORS[Validators<br/>Event/Room/URL]
-        EVENTS_D[Event Definitions]
-    end
-
-    INDEX --> CLIENT
-    CLIENT --> STATE
-    CLIENT --> EVENTS
-    CLIENT --> ROOMS
-    CLIENT --> RECONNECT
-    CLIENT --> STRATEGY
-    CLIENT --> WAKE
-
-    STATE -.implements.-> ISTATE
-    EVENTS -.implements.-> IEVENT
-    ROOMS -.implements.-> IROOM
-    STRATEGY -.implements.-> IRECONNECT
-    WAKE -.implements.-> IWAKE
-    CLIENT -.implements.-> ICLIENT
-
-    ICLIENT --> ENTITIES
-    ICLIENT --> ERRORS
-    STATE --> ILOGGER
-    EVENTS --> ILOGGER
-    ROOMS --> VALIDATORS
-    CLIENT --> VALIDATORS
-
-    SCHEMAS --> ERRORS
-
-    classDef domain fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef interface fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    classDef infra fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef public fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
-
-    class ENTITIES,ERRORS,VALIDATORS,EVENTS_D domain
-    class ICLIENT,ISTATE,IEVENT,IROOM,IRECONNECT,IWAKE,ILOGGER,ISOCKET interface
-    class CLIENT,STATE,EVENTS,ROOMS,RECONNECT,STRATEGY,WAKE,SCHEMAS infra
-    class INDEX public
-```
-
-### Layer Dependency Rules
-
-**CRITICAL**: Dependencies only flow inward (Dependency Inversion Principle)
+## Project Structure
 
 ```
-┌─────────────────────────────────────────┐
-│  Infrastructure (infra/)                │  ← Concrete implementations
-│  - Socket.IO adapters                   │  ← External framework dependencies
-│  - Zod schemas                          │  ← Can import from Interfaces & Domain
-└────────────────┬────────────────────────┘
-                 │ depends on ↓ (via interfaces)
-┌─────────────────────────────────────────┐
-│  Interfaces (core/interfaces/)          │  ← Port definitions
-│  - Contract definitions                 │  ← Type-only imports
-│  - No implementation                    │  ← Can import from Domain only
-└────────────────┬────────────────────────┘
-                 │ depends on ↓
-┌─────────────────────────────────────────┐
-│  Domain (core/domain/)                  │  ← Business logic
-│  - Pure TypeScript                      │  ← ZERO external dependencies
-│  - Entities, Errors, Validators         │  ← No imports from outer layers
-└─────────────────────────────────────────┘
+src/
+├── index.ts                          # Public API barrel
+├── constants.ts                      # Transport & daemon constants
+├── core/
+│   ├── domain/
+│   │   ├── entities/instance-info.ts # InstanceInfo entity
+│   │   ├── errors/
+│   │   │   ├── connection-error.ts   # 7 connection error classes
+│   │   │   └── transport-error.ts    # 16 transport error classes
+│   │   ├── events/                   # Event name constants & types
+│   │   ├── validators/               # Event name, room name, URL validators
+│   │   └── types.ts                  # Domain types
+│   └── interfaces/                   # 15 interface files (contracts)
+│       ├── i-client.ts               # ITransportClient (main API)
+│       ├── i-client-factory.ts       # IClientFactory
+│       ├── i-client-factory-config.ts
+│       ├── i-instance-discovery.ts   # IInstanceDiscovery
+│       ├── i-instance-manager.ts     # IGlobalInstanceManager
+│       ├── i-connection-state.ts     # IConnectionStateManager
+│       ├── i-event-dispatcher.ts     # IEventDispatcher
+│       ├── i-room-manager.ts         # IRoomManager
+│       ├── i-reconnection-strategy.ts
+│       ├── i-force-reconnect-manager.ts
+│       ├── i-spawn-lock.ts          # ISpawnLock
+│       ├── i-wake-detector.ts
+│       ├── i-client-logger.ts
+│       ├── i-socket.ts              # Internal only
+│       └── i-socket-provider.ts     # Internal only
+└── infra/
+    ├── socket-io-client.ts           # TransportClient facade
+    ├── client-factory.ts             # TransportClientFactory + connectToTransport()
+    ├── daemon-connector.ts            # connectToDaemon() — ensure + connect + register
+    ├── daemon-discovery-sync.ts       # discoverDaemon() synchronous health check
+    ├── daemon-health.ts               # checkDaemonHealth() shared health check
+    ├── daemon-instance-discovery.ts   # DaemonInstanceDiscovery (async, for factory)
+    ├── daemon-spawner.ts              # ensureDaemonRunning() — spawn + lock + poll
+    ├── connection-state-manager.ts
+    ├── event-dispatcher.ts
+    ├── room-manager.ts
+    ├── force-reconnect-manager.ts
+    ├── reconnection-strategy.ts       # ExponentialBackoffStrategy
+    ├── wake-detector.ts               # TimeBasedWakeDetector
+    ├── no-op-client-logger.ts
+    ├── global-data-path.ts            # getGlobalDataDir()
+    ├── global-instance-manager.ts     # GlobalInstanceManager (daemon.json CRUD)
+    ├── heartbeat-utils.ts             # isHeartbeatStale()
+    ├── process-utils.ts               # isProcessAlive()
+    ├── resolve-server-path.ts         # resolveServerPath()
+    ├── spawn-lock.ts                  # SpawnLock (file-based mutex)
+    ├── schemas/                       # Zod schemas for runtime validation
+    │   ├── schemas.ts
+    │   └── types.ts
+    └── utils/deep-freeze.ts
+
+test/
+├── core/domain/
+│   ├── entities/instance-info.test.ts
+│   ├── errors/                        # connection-error, transport-error tests
+│   └── validators/                    # event-name, room-name, url validator tests
+└── infra/
+    ├── socket-io-client.test.ts
+    ├── socket-io-client-edge-cases.test.ts
+    ├── client-factory.test.ts
+    ├── daemon-connector.test.ts
+    ├── daemon-discovery-sync.test.ts
+    ├── daemon-health.test.ts
+    ├── daemon-instance-discovery.test.ts
+    ├── daemon-spawner.test.ts
+    ├── connection-state-manager.test.ts
+    ├── event-dispatcher.test.ts
+    ├── room-manager.test.ts
+    ├── force-reconnect-manager.test.ts
+    ├── global-data-path.test.ts
+    ├── global-instance-manager.test.ts
+    ├── heartbeat-utils.test.ts
+    ├── process-utils.test.ts
+    ├── reconnection-strategy.test.ts
+    ├── resolve-server-path.test.ts
+    ├── spawn-lock.test.ts
+    ├── wake-detector.test.ts
+    ├── schemas/schemas.test.ts
+    └── utils/deep-freeze.test.ts
 ```
 
-## Component Diagram
+## Layer Dependency Rules
 
-### TransportClient Composition
+Dependencies flow inward only:
 
-```mermaid
-graph LR
-    subgraph "TransportClient (Facade)"
-        TC[TransportClient]
-    end
-
-    subgraph "Composed Components"
-        SM[ConnectionStateManager<br/>State tracking]
-        ED[EventDispatcher<br/>Event subscriptions]
-        RM[RoomManager<br/>Room management]
-        FRM[ForceReconnectManager<br/>Reconnection coordination]
-    end
-
-    subgraph "Injected Strategies"
-        RS[IReconnectionStrategy<br/>Exponential Backoff]
-        WD[IWakeDetector<br/>Time-based Wake]
-        LOG[IClientLogger<br/>NoOp/Custom]
-    end
-
-    subgraph "External"
-        SIO[Socket.IO Client]
-    end
-
-    TC --> SM
-    TC --> ED
-    TC --> RM
-    TC --> FRM
-    TC --> RS
-    TC --> WD
-    TC --> LOG
-    TC --> SIO
-
-    SM -.ISocketProvider.-> TC
-    ED -.ISocketProvider.-> TC
-    RM -.ISocketProvider.-> TC
-
-    style TC fill:#bbdefb,stroke:#0d47a1
-    style SM fill:#c8e6c9,stroke:#1b5e20
-    style ED fill:#c8e6c9,stroke:#1b5e20
-    style RM fill:#c8e6c9,stroke:#1b5e20
-    style FRM fill:#c8e6c9,stroke:#1b5e20
-    style RS fill:#fff9c4,stroke:#f57f17
-    style WD fill:#fff9c4,stroke:#f57f17
-    style LOG fill:#fff9c4,stroke:#f57f17
-    style SIO fill:#ffccbc,stroke:#bf360c
+```
+Infrastructure (src/infra/)     → can import from Interfaces & Domain
+Interfaces (src/core/interfaces/) → can import from Domain only
+Domain (src/core/domain/)         → ZERO external dependencies
 ```
 
-**Key Insights**:
-- **Facade Pattern**: TransportClient coordinates 6 specialized components
-- **Composition over Inheritance**: No class inheritance, all behavior via composition
-- **Dependency Injection**: All dependencies injectable (Open/Closed Principle)
-- **Provider Pattern**: Composed components access socket via ISocketProvider (closure-based inversion)
+Never violate:
+- Domain must not import from Interfaces or Infrastructure
+- Domain must not have external dependencies (no Zod, no Socket.IO)
+- Interfaces must not import from Infrastructure
 
-### Connection Lifecycle State Machine
+## Directory & Path Concepts
 
-```mermaid
-stateDiagram-v2
-    [*] --> disconnected: new TransportClient()
+Four distinct path concepts flow through the connection lifecycle. Confusing them causes bugs.
 
-    disconnected --> connecting: connect(url)
-    connecting --> connected: Socket connected
-    connecting --> disconnected: Connection failed
+| Concept | What it is | Where used | Can be undefined? |
+|---------|-----------|------------|-------------------|
+| `fromDir` | Starting directory for discovery. Walks up to find `.brv/`. Also sent as `cwd` in Socket.IO handshake. Default: `process.cwd()` | `connectToTransport(fromDir)`, `factory.connect(fromDir)`, `discovery.discover(fromDir)` | No (defaults to cwd) |
+| `projectRoot` | Parent directory of `.brv/` found by walk-up. Returned to caller. | `ConnectionResult.projectRoot`, `ServerStatusRunning.projectRoot` | Yes (undefined if no `.brv/` found, e.g. MCP global) |
+| `cwd` | Client's working directory sent via Socket.IO query during handshake. Same value as `fromDir`. | `TransportClient` constructor, Socket.IO `query.cwd` | No |
+| `projectPath` | Project path sent in `client:register` payload. Server uses it for room routing and lifecycle. Set explicitly by caller. | `RegistrationOptions.projectPath`, `ClientRegisterRequest.projectPath` | Yes (omitted for MCP global) |
 
-    connected --> reconnecting: Socket disconnect
-    connected --> disconnected: disconnect()
+**Flow:**
 
-    reconnecting --> connected: Reconnect success
-    reconnecting --> disconnected: Max attempts reached
-    reconnecting --> disconnected: disconnect()
+```
+connectToTransport(fromDir)
+  │
+  ├── discovery.discover(fromDir)
+  │     ├── reads daemon.json from global data dir (platform-specific)
+  │     └── walks up from fromDir to find .brv/ → projectRoot (or undefined)
+  │
+  ├── new TransportClient({ cwd: fromDir })
+  │     └── sends cwd in Socket.IO handshake query
+  │
+  └── client:register { clientType, projectPath? }
+        └── projectPath is SEPARATE from projectRoot — set by caller
 
-    note right of connected
-        - Auto-rejoin rooms
-        - Wake detection active
-        - Event handlers active
-    end note
-
-    note right of reconnecting
-        - Exponential backoff
-        - Max 30 attempts
-        - Wake detection triggers force reconnect
-    end note
+Return: { client, projectRoot? }
 ```
 
-## Design Patterns
+**Key distinction:** `projectRoot` is discovered (walk-up from `fromDir`), while `projectPath` is explicitly provided by the caller in registration options. MCP servers running globally have no `.brv/` directory, so `projectRoot` is `undefined` — they learn the project path from task payloads (`clientCwd` field).
 
-### 1. Facade Pattern
+**Note:** `socketOptions.query` can override `cwd` during handshake. This is intentional for advanced use cases like MCP servers that need to set a different working directory per connection. Exercise caution — no warning is logged when override occurs.
 
-**Implementation**: `TransportClient`
+## Key Design Decisions
 
-**Purpose**: Simplify complex subsystem of 6 components
+- **ES2022 private fields** (`#field`) for runtime encapsulation
+- **Socket.IO** over native WebSocket (rooms, auto-reconnection, fallbacks)
+- **Zod** in infra layer for runtime validation; domain validators for business rules
+- **Composition over inheritance** — TransportClient coordinates 6 injected components
+- **Single daemon per machine** — DaemonInstanceDiscovery reads from platform-specific global data dir
+
+## Public API
+
+Two entry points for consumers:
 
 ```typescript
-// User sees simple API
-const client = new TransportClient()
-await client.connect(url)
-client.on('event', handler)
-await client.joinRoom('room')
+// Simplified: discover daemon + connect + register
+const {client, projectRoot} = await connectToTransport()
 
-// Behind the scenes, coordinates:
-// - ConnectionStateManager (state tracking)
-// - EventDispatcher (event handling)
-// - RoomManager (room management)
-// - ForceReconnectManager (reconnection)
-// - IReconnectionStrategy (backoff algorithm)
-// - IWakeDetector (system wake detection)
+// Status check (non-throwing)
+const status = await checkServerStatus()
 ```
 
-### 2. Strategy Pattern
+Advanced usage via `TransportClientFactory` with custom `IInstanceDiscovery`, `IClientLogger`, retry config.
 
-**Implementation**: `IReconnectionStrategy`
+## Build & Test
 
-**Purpose**: Pluggable reconnection algorithms
-
-```typescript
-// Default: Exponential backoff
-const client1 = new TransportClient()
-
-// Custom: Linear backoff
-class LinearBackoff implements IReconnectionStrategy {
-  getDelay(attempt: number): number { return 1000 * attempt }
-}
-const client2 = new TransportClient({
-  reconnectionStrategy: new LinearBackoff()
-})
+```bash
+npm run build      # tsc → dist/
+npm run typecheck   # tsc --noEmit
+npm test           # mocha (28 test files)
+npm run lint       # eslint + prettier
 ```
 
-### 3. Observer Pattern
-
-**Implementation**: `EventDispatcher`, `ConnectionStateManager`
-
-**Purpose**: Multiple subscribers to events and state changes
-
-```typescript
-// Multiple handlers for same event
-client.on('message', handler1)
-client.on('message', handler2)
-
-// State change observers
-client.onStateChange((state) => console.log(state))
-```
-
-### 4. Factory Pattern
-
-**Implementation**: `TransportClientFactory`, `InstanceInfo.create()`
-
-**Purpose**: Controlled object creation with validation
-
-```typescript
-// Factory with discovery logic
-const factory = new TransportClientFactory()
-const {client, projectRoot} = await factory.connect()
-
-// Entity factory with validation
-const info = InstanceInfo.create({pid: 1234, port: 9847})
-```
-
-### 5. Null Object Pattern
-
-**Implementation**: `NoOpClientLogger`
-
-**Purpose**: Eliminate null checks for optional logger
-
-```typescript
-// Default: No-op logger (no null checks needed)
-this.#logger = config.logger ?? new NoOpClientLogger()
-
-// All code can safely call:
-this.#logger.debug('message') // Works even if no logger configured
-```
-
-### 6. Provider Pattern (Closure-based Inversion)
-
-**Implementation**: `ISocketProvider`
-
-**Purpose**: Read-only access to socket for composed components
-
-```typescript
-// TransportClient creates provider via closure
-const internalSocketProvider: ISocketProvider = {
-  getSocket: () => this.#socket  // Closure captures private field
-}
-
-// Components depend on interface, not TransportClient
-this.#eventDispatcher = new EventDispatcher({
-  socketProvider: internalSocketProvider
-})
-```
-
-## Architecture Decision Records
-
-### ADR-001: ES2022 Private Fields
-
-**Status**: Accepted
-
-**Context**:
-TypeScript offers two privacy mechanisms:
-1. TypeScript `private` keyword (compile-time only)
-2. ES2022 private fields with `#` (runtime privacy)
-
-**Decision**: Use ES2022 private fields (`#field`) throughout the codebase.
-
-**Rationale**:
-- **True Encapsulation**: Cannot be accessed via bracket notation or reflection
-- **Runtime Privacy**: Privacy enforced by JavaScript engine, not just compiler
-- **Future-Proof**: Native JavaScript feature, not TypeScript-specific
-- **Performance**: V8 optimizations for private fields
-
-**Consequences**:
-- ✅ Stronger encapsulation guarantees
-- ✅ Consistent with modern JavaScript standards
-- ⚠️ Slightly less familiar to developers used to `private` keyword
-- ⚠️ Cannot be accessed in tests (requires proper interface testing)
-
-**Example**:
-```typescript
-export class TransportClient {
-  // ✅ ES2022 private field (runtime privacy)
-  readonly #socket: Socket | undefined
-
-  // ❌ TypeScript private (compile-time only)
-  // private socket: Socket | undefined
-}
-```
-
----
-
-### ADR-002: Socket.IO vs Native WebSocket
-
-**Status**: Accepted
-
-**Context**:
-Need to choose real-time communication protocol for ByteRover Core ↔ CLI communication.
-
-**Options Considered**:
-1. Socket.IO (WebSocket with fallbacks)
-2. Native WebSocket (standard WebSocket API)
-3. Server-Sent Events (SSE)
-
-**Decision**: Use Socket.IO
-
-**Rationale**:
-- **Automatic Reconnection**: Built-in reconnection with exponential backoff
-- **Room Support**: Native room/namespace support for targeted broadcasts
-- **Fallback Transports**: Falls back to long-polling if WebSocket unavailable
-- **Event-Based API**: Natural event emitter pattern
-- **Binary Support**: Handles both text and binary messages
-- **Production-Ready**: Battle-tested in production environments
-
-**Trade-offs**:
-- ✅ Rich feature set (rooms, namespaces, acknowledgments)
-- ✅ Mature ecosystem with good TypeScript support
-- ✅ Automatic connection management
-- ⚠️ Larger bundle size (~60KB) vs native WebSocket
-- ⚠️ Requires Socket.IO server (can't use generic WebSocket servers)
-
-**Consequences**:
-- Must abstract Socket.IO behind `ISocket` interface (enables future replacement)
-- Room management becomes first-class feature
-- Connection reliability improved via automatic reconnection
-
----
-
-### ADR-003: Zod for Runtime Validation
-
-**Status**: Accepted
-
-**Context**:
-TypeScript provides compile-time type safety but cannot validate runtime data from external sources (Socket.IO events, JSON files).
-
-**Options Considered**:
-1. Zod (schema validation with type inference)
-2. io-ts (functional approach, similar to Zod)
-3. Yup (validation library)
-4. Manual validation (hand-written validators)
-
-**Decision**: Use Zod for runtime validation at trust boundaries.
-
-**Rationale**:
-- **Type Inference**: `z.infer<typeof Schema>` generates TypeScript types
-- **Single Source of Truth**: Schema defines both validation and types
-- **Composability**: Can build complex schemas from primitives
-- **Error Messages**: Clear, actionable error messages
-- **Performance**: Fast validation with minimal overhead
-
-**Placement**:
-- Zod schemas in `infra/schemas/` (infrastructure layer)
-- Domain validators in `core/domain/validators/` (pure business rules)
-
-**Why Not Domain Layer?**:
-- Zod is external dependency (domain must have zero external deps)
-- Validation at boundaries (infrastructure responsibility)
-- Domain validators handle business rules (event name format, room name rules)
-
-**Example**:
-```typescript
-// infra/schemas/schemas.ts (runtime validation)
-export const TaskCreateRequestSchema = z.object({
-  taskId: z.string().uuid(),
-  type: TaskTypeSchema,
-  content: z.string().min(1),
-})
-
-// core/domain/validators/event-name-validator.ts (business rules)
-export function validateEventName(event: string): void {
-  if (event.length > 255) {
-    throw new InvalidEventNameError(event, 'max 255 chars')
-  }
-}
-```
-
-**Consequences**:
-- ✅ Runtime safety at trust boundaries
-- ✅ Type safety from schema definitions
-- ✅ Clear separation: Zod for structure, domain validators for business rules
-- ⚠️ Duplication between Zod schemas and domain validators (acceptable trade-off)
-
----
-
-### ADR-004: Exponential Backoff Reconnection Strategy
-
-**Status**: Accepted
-
-**Context**:
-Need reconnection strategy when connection drops. Must balance fast reconnection with server load.
-
-**Options Considered**:
-1. Fixed delay (e.g., retry every 1 second)
-2. Linear backoff (1s, 2s, 3s, 4s...)
-3. Exponential backoff (5s, 10s, 20s, 40s, 80s...)
-4. Exponential backoff with jitter (adds randomness)
-
-**Decision**: Exponential backoff with jitter (default strategy).
-
-**Parameters**:
-- Initial delay: 5000ms (5 seconds)
-- Delays: `[5000, 10000, 20000, 30000, 60000]` ms
-- Max attempts: 10 (default, configurable)
-- Jitter factor: 50% (adds randomness to prevent thundering herd)
-
-**Rationale**:
-- **Conservative Initial Retry**: 5-second first attempt prevents server overload on mass reconnection
-- **Gradual Backoff**: Increases delays to reduce server load during prolonged outages
-- **Jitter**: 50% randomization prevents synchronized retries from multiple clients (thundering herd)
-- **Reasonable Max Delay**: Caps at 60 seconds, appropriate for server-side reconnection scenarios
-- **Pluggable**: Strategy pattern allows custom implementations
-
-**Trade-offs**:
-- ✅ Balances responsiveness and resource usage
-- ✅ Industry standard approach (AWS, Google Cloud use exponential backoff)
-- ✅ Configurable via `IReconnectionStrategy` interface
-- ⚠️ May be too slow for some use cases (can inject custom strategy)
-
-**Implementation**:
-```typescript
-export class ExponentialBackoffStrategy implements IReconnectionStrategy {
-  readonly #delays = [5000, 10_000, 20_000, 30_000, 60_000] // ms
-  readonly #jitterFactor = 0.5
-
-  getDelay(attempt: number): number {
-    const delay = this.#delays[Math.min(attempt, this.#delays.length - 1)]
-    // Formula: delay * (1 - jitter + random * jitter)
-    // With jitter=0.5: delay varies from 0.5*base to 1.0*base
-    const jitterMultiplier = 1 - this.#jitterFactor + Math.random() * this.#jitterFactor
-    return Math.floor(delay * jitterMultiplier)
-  }
-}
-```
-
----
-
-### ADR-005: Room Auto-Rejoin on Reconnect
-
-**Status**: Accepted
-
-**Context**:
-When connection drops and reconnects, should rooms be automatically rejoined?
-
-**Decision**: YES - automatically rejoin all rooms on reconnect with exponential backoff retry.
-
-**Rationale**:
-- **User Expectation**: Users expect room subscriptions to persist across reconnections
-- **Stateful Client**: Client maintains room state, simplifies user code
-- **Reliability**: Retry with backoff ensures eventual consistency
-
-**Implementation**:
-- Track joined rooms in `RoomManager#joinedRooms: Set<string>`
-- On reconnect, call `roomManager.rejoinRooms()`
-- Retry each room with exponential backoff (5 attempts: 50ms, 100ms, 200ms, 400ms, 800ms)
-- Use `AbortController` for clean cancellation
-- Deduplication: Skip rooms with active rejoin operation
-
-**Edge Case Handling**:
-```typescript
-// If leaveRoom() called during rejoin, cancel rejoin
-public async leaveRoom(room: string): Promise<void> {
-  this.#joinedRooms.delete(room)  // Remove FIRST (prevents infinite rejoin loop)
-  this.cancelRejoin(room)          // Cancel pending rejoin
-  // ... then emit room:leave
-}
-```
-
-**Consequences**:
-- ✅ Transparent reconnection for room subscriptions
-- ✅ No user code needed to handle room rejoins
-- ✅ Resilient to transient join failures
-- ⚠️ Server must support idempotent room joins
-
----
-
-### ADR-006: Connection ID for Race Condition Mitigation
-
-**Status**: Accepted
-
-**Context**:
-Rapid connect/disconnect cycles can cause race conditions:
-- User calls `connect(url1)`, then immediately `connect(url2)`
-- Old socket emits `connect` event after new socket created
-- State becomes corrupted
-
-**Decision**: Track connection attempts with incrementing ID.
-
-**Implementation**:
-```typescript
-export class TransportClient {
-  #connectionId: number = 0  // Increments on each connect()
-
-  private establishConnection(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.#connectionId++
-      const thisConnectionId = this.#connectionId  // Capture current ID
-
-      const onConnect = (): void => {
-        if (this.#connectionId !== thisConnectionId) {
-          this.log('Connection superseded, ignoring connect event')
-          return  // ✅ Detects superseded connection
-        }
-        // ... proceed with connection
-      }
-    })
-  }
-}
-```
-
-**Scenario Prevented**:
-1. User calls `connect('http://localhost:3000')` → connectionId = 1
-2. User calls `connect('http://localhost:4000')` → connectionId = 2
-3. First socket emits `connect` → check fails (1 !== 2), event ignored ✅
-
-**Rationale**:
-- **Simple**: Single integer check
-- **Effective**: Catches all superseded connection events
-- **Zero Overhead**: Minimal performance impact
-
-**Consequences**:
-- ✅ Prevents state corruption from stale events
-- ✅ No need for complex socket cleanup tracking
-- ✅ Works with promise mutex for complete protection
-
----
-
-### ADR-007: Promise Mutex for Concurrent connect() Prevention
-
-**Status**: Accepted
-
-**Context**:
-Multiple concurrent `connect()` calls should not create multiple sockets.
-
-**Decision**: Use promise mutex pattern to deduplicate concurrent connect() calls.
-
-**Implementation**:
-```typescript
-export class TransportClient {
-  #connectPromise: Promise<void> | undefined
-
-  public async connect(url: string): Promise<void> {
-    // If connection in progress, share the existing promise
-    if (this.#connectPromise) {
-      if (this.#serverUrl && this.#serverUrl !== url) {
-        throw new ConcurrentConnectionError(this.#serverUrl, url)
-      }
-      return this.#connectPromise  // ✅ Reuse existing promise
-    }
-
-    // Start new connection
-    this.#connectPromise = this.establishConnection(url).finally(() => {
-      this.#connectPromise = undefined  // ✅ Clear mutex
-    })
-
-    return this.#connectPromise
-  }
-}
-```
-
-**Scenarios Handled**:
-1. **Same URL**: `Promise.all([connect(url), connect(url)])` → both get same promise
-2. **Different URL**: `connect(url1)` then `connect(url2)` → throws `ConcurrentConnectionError`
-3. **After completion**: Promise cleared, can reconnect
-
-**Consequences**:
-- ✅ Prevents duplicate sockets
-- ✅ Clear error for conflicting URLs
-- ✅ Automatic cleanup via `.finally()`
-
----
-
-## Key Files Reference
-
-### Critical Implementation Files
-
-| File | LOC | Purpose |
-|------|-----|---------|
-| [infra/socket-io-client.ts](infra/socket-io-client.ts) | 859 | Main facade, coordinates 6 components |
-| [infra/event-dispatcher.ts](infra/event-dispatcher.ts) | 339 | Event subscription & dispatching |
-| [infra/room-manager.ts](infra/room-manager.ts) | 383 | Room join/leave/rejoin with retry |
-| [core/domain/entities/instance-info.ts](core/domain/entities/instance-info.ts) | 174 | Immutable domain entity |
-| [core/interfaces/i-client.ts](core/interfaces/i-client.ts) | 220 | Main public API contract |
-
-### Domain Layer (Pure Business Logic)
-
-```
-core/domain/
-├── entities/
-│   └── instance-info.ts          # Instance data + business rules
-├── errors/
-│   ├── connection-error.ts       # 6 connection error types
-│   └── transport-error.ts        # 16 transport error types
-├── validators/
-│   ├── common.ts                 # Shared validation logic
-│   ├── event-name-validator.ts   # Event name rules
-│   ├── room-name-validator.ts    # Room name rules
-│   └── url-validator.ts          # URL validation rules
-└── types.ts                      # Domain type definitions
-```
-
-### Interface Layer (Contracts)
-
-```
-core/interfaces/
-├── i-client.ts                   # Main API (15 methods)
-├── i-connection-state.ts         # State management
-├── i-event-dispatcher.ts         # Event handling
-├── i-room-manager.ts             # Room operations
-├── i-reconnection-strategy.ts    # Reconnection algorithm
-├── i-wake-detector.ts            # System wake detection
-├── i-client-logger.ts            # Logging abstraction
-└── i-socket-provider.ts          # Read-only socket access
-```
-
-### Infrastructure Layer (Implementations)
-
-```
-infra/
-├── socket-io-client.ts           # TransportClient facade
-├── connection-state-manager.ts   # State tracking
-├── event-dispatcher.ts           # Event subscriptions
-├── room-manager.ts               # Room management
-├── force-reconnect-manager.ts    # Reconnection coordinator
-├── reconnection-strategy.ts      # Exponential backoff
-├── wake-detector.ts              # Time-based wake detection
-├── no-op-client-logger.ts        # Null object logger
-└── schemas/                      # Zod validation schemas
-    ├── schemas.ts
-    └── types.ts
-```
-
-## Development Guidelines
-
-### Adding New Features
-
-1. **Start with Interfaces**: Define contract in `core/interfaces/`
-2. **Add Domain Logic**: Business rules in `core/domain/validators/` or entities
-3. **Implement Infrastructure**: Concrete implementation in `infra/`
-4. **Write Tests**: Unit tests + boundary value tests
-5. **Update This Doc**: Add ADR if architectural decision made
-
-### Dependency Rules
-
-**NEVER violate these rules**:
-- ❌ Domain imports from Infrastructure
-- ❌ Domain imports from Interfaces
-- ❌ Domain has external dependencies
-- ❌ Interfaces import from Infrastructure
-- ✅ Infrastructure imports from Interfaces (via DI)
-- ✅ Infrastructure imports from Domain (validators, errors)
-
-### Testing Strategy
-
-See [TESTING.md](TESTING.md) for comprehensive testing documentation.
-
-**Quick Reference**:
-- Unit tests: `test/core/domain/`, `test/infra/`
-- Integration tests: `test/integration/` (requires `TEST_INTEGRATION=1`)
-- Domain validators: Comprehensive coverage with boundary tests
-- Infrastructure: Ongoing test expansion for critical paths
-
-## Resources
-
-- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) - Uncle Bob
-- [SOLID Principles](https://en.wikipedia.org/wiki/SOLID) - Wikipedia
-- [Socket.IO Documentation](https://socket.io/docs/v4/) - Official docs
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) - Official guide
-- [Zod Documentation](https://zod.dev/) - Schema validation
-
----
-
-**Last Updated**: 2026-01-28
-**Architecture Score**: 9.36/10 (A+) per comprehensive audit
+Config: TypeScript strict, ES2022 target, Node16 modules. Tests use Mocha + Chai + Sinon + tsx loader.

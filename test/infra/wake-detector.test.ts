@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {TimeBasedWakeDetector, createDefaultWakeDetector} from '../../infra/wake-detector.js'
+import {TimeBasedWakeDetector, createDefaultWakeDetector} from '../../src/infra/wake-detector.js'
 
 describe('TimeBasedWakeDetector', () => {
   let clock: sinon.SinonFakeTimers

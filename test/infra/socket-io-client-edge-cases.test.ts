@@ -1,11 +1,11 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {TransportClient} from '../../infra/socket-io-client.js'
-import {NoOpClientLogger} from '../../infra/no-op-client-logger.js'
-import {ExponentialBackoffStrategy} from '../../infra/reconnection-strategy.js'
-import {TimeBasedWakeDetector} from '../../infra/wake-detector.js'
-import {TransportNotConnectedError, InvalidEventNameError} from '../../core/domain/errors/transport-error.js'
+import {TransportClient} from '../../src/infra/socket-io-client.js'
+import {NoOpClientLogger} from '../../src/infra/no-op-client-logger.js'
+import {ExponentialBackoffStrategy} from '../../src/infra/reconnection-strategy.js'
+import {TimeBasedWakeDetector} from '../../src/infra/wake-detector.js'
+import {TransportNotConnectedError, InvalidEventNameError} from '../../src/core/domain/errors/transport-error.js'
 
 describe('TransportClient - Edge Cases & Critical Paths', () => {
   let client: TransportClient
@@ -39,60 +39,6 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
 
   afterEach(() => {
     sinon.restore()
-  })
-
-  describe('Wake Detection', () => {
-    it('should start wake detection when state is checked', () => {
-      // Wake detector should not be started initially
-      expect(mockWakeDetector.start.called).to.be.false
-
-      // Get initial state - this might trigger internal setup
-      const state = client.getState()
-      expect(state).to.equal('disconnected')
-    })
-
-    it('should handle wake detector already active', () => {
-      mockWakeDetector.isActive.returns(true)
-
-      const state = client.getState()
-      expect(state).to.equal('disconnected')
-
-      // Should not call start() if already active
-      // This tests the guard in startWakeDetection()
-    })
-
-    it('should stop wake detection on disconnect', async () => {
-      // Verify wake detector stop is called during cleanup
-      expect(client.getState()).to.equal('disconnected')
-
-      // Disconnect should call stopWakeDetection
-      await client.disconnect()
-
-      // State should remain disconnected
-      expect(client.getState()).to.equal('disconnected')
-    })
-
-    it('should unsubscribe from wake events on stop', () => {
-      const unsubscribeSpy = sinon.spy()
-      mockWakeDetector.onWake.returns(unsubscribeSpy)
-
-      // Trigger wake detection setup
-      client.getState()
-
-      // Unsubscribe should not be called yet
-      expect(unsubscribeSpy.called).to.be.false
-    })
-
-    it('should handle multiple wake detection start/stop cycles', () => {
-      // Multiple getState calls
-      client.getState()
-      client.getState()
-      client.getState()
-
-      // Wake detector isActive should be checked at least once
-      // Note: Wake detection might not start on getState() call alone
-      expect(client.getState()).to.equal('disconnected')
-    })
   })
 
   describe('Error Handling - Invalid Operations', () => {
@@ -295,59 +241,6 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
     })
   })
 
-  describe('Reconnection Strategy Integration', () => {
-    it('should use custom reconnection strategy', () => {
-      // Strategy was injected in beforeEach
-      expect(client.getState()).to.equal('disconnected')
-
-      // Strategy methods should be available
-      expect(mockStrategy.getDelay).to.exist
-      expect(mockStrategy.shouldContinue).to.exist
-    })
-
-    it('should reset strategy on successful connection', () => {
-      // This would be tested with actual connection
-      // For now, verify strategy is injectable
-      expect(mockStrategy.reset).to.exist
-    })
-
-    it('should query strategy for delays during reconnection', () => {
-      // Verify strategy is used for delay calculation
-      const delay = mockStrategy.getDelay(1)
-      expect(delay).to.equal(1000)
-    })
-
-    it('should stop reconnection when strategy says to stop', () => {
-      mockStrategy.shouldContinue.returns(false)
-
-      // Verify strategy is consulted
-      const shouldContinue = mockStrategy.shouldContinue(5)
-      expect(shouldContinue).to.be.false
-    })
-  })
-
-  describe('Logger Integration', () => {
-    it('should log debug messages when logger provided', () => {
-      // Logger was injected in beforeEach
-      expect(mockLogger.debug).to.exist
-      expect(mockLogger.info).to.exist
-      expect(mockLogger.warn).to.exist
-      expect(mockLogger.error).to.exist
-    })
-
-    it('should not throw when logger is not provided', () => {
-      const clientWithoutLogger = new TransportClient()
-
-      // Should use NoOpClientLogger internally
-      expect(clientWithoutLogger.getState()).to.equal('disconnected')
-    })
-
-    it('should log errors with context', () => {
-      // Verify logger error signature
-      expect(mockLogger.error.callCount).to.equal(0) // Not called yet
-    })
-  })
-
   describe('Concurrent Operations', () => {
     it('should handle multiple onStateChange registrations concurrently', () => {
       const handlers = Array.from({length: 10}, () => sinon.spy())
@@ -467,27 +360,32 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
 
   describe('Error Recovery', () => {
     it('should handle errors in state change handlers', () => {
-      const throwingHandler = () => {
+      const errorHandler = () => {
         throw new Error('Handler error')
       }
       const normalHandler = sinon.spy()
 
-      client.onStateChange(throwingHandler)
+      // Register error-throwing handler alongside normal handler
+      client.onStateChange(errorHandler)
       client.onStateChange(normalHandler)
 
-      // Should not crash the client
+      // Client should remain functional despite error-prone handler registration
       expect(client.getState()).to.equal('disconnected')
     })
 
     it('should handle errors in event handlers', () => {
-      const throwingHandler = () => {
+      const errorHandler = () => {
         throw new Error('Event handler error')
       }
 
-      // Should register without throwing
-      client.on('test-event', throwingHandler)
+      // Register error-throwing handler
+      const unsubscribe = client.on('test-event', errorHandler)
 
+      // Client should remain functional
       expect(client.getState()).to.equal('disconnected')
+
+      // Cleanup should work
+      unsubscribe()
     })
   })
 

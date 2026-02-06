@@ -21,8 +21,7 @@ export default tseslint.config(
   prettier,
   // Source files with type-aware linting
   {
-    files: ['**/*.ts'],
-    ignores: ['test/**/*.ts'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',

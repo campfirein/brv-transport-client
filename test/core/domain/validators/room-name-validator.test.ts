@@ -1,7 +1,7 @@
 import {describe, it} from 'mocha'
 import {expect} from 'chai'
-import {validateRoomName} from '../../../../core/domain/validators/room-name-validator.js'
-import {InvalidRoomNameError} from '../../../../core/domain/errors/transport-error.js'
+import {validateRoomName} from '../../../../src/core/domain/validators/room-name-validator.js'
+import {InvalidRoomNameError} from '../../../../src/core/domain/errors/transport-error.js'
 
 describe('validateRoomName', () => {
   describe('valid room names', () => {

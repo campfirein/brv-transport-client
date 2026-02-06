@@ -1,0 +1,41 @@
+/**
+ * Transport Event Names Module (Domain Layer)
+ *
+ * Contains pure TypeScript event name constants.
+ * Zod schemas and derived types have been moved to infra/schemas
+ * to maintain Clean Architecture (domain layer has no external dependencies).
+ *
+ * @example
+ * ```typescript
+ * import {
+ *   TaskEventNames,
+ *   LlmEventNames,
+ * } from '@campfirein/brv-transport-client'
+ *
+ * // Use event names
+ * client.on(LlmEventNames.CHUNK, (data) => {
+ *   console.log(data.content)
+ * })
+ * ```
+ */
+
+// Event name constants (pure TypeScript, no external dependencies)
+export {
+  AgentEventNames,
+  CipherEventNames,
+  ClientEventNames,
+  EventNames,
+  LlmEventList,
+  LlmEventNames,
+  SessionEventNames,
+  TaskEventNames,
+  TaskTerminalStates,
+  // Type exports for event names
+  type AgentEventName,
+  type CipherEventName,
+  type ClientEventName,
+  type LlmEventName,
+  type SessionEventName,
+  type TaskEventName,
+  type TransportEventName,
+} from './event-names.js'

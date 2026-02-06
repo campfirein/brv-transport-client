@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {isProcessAlive} from '../../infra/process-utils.js'
+import {isProcessAlive} from '../../src/infra/process-utils.js'
 
 describe('process-utils', () => {
   describe('isProcessAlive()', () => {

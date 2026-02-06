@@ -1,7 +1,7 @@
 import {describe, it} from 'mocha'
 import {expect} from 'chai'
-import {validateEventName} from '../../../../core/domain/validators/event-name-validator.js'
-import {InvalidEventNameError} from '../../../../core/domain/errors/transport-error.js'
+import {validateEventName} from '../../../../src/core/domain/validators/event-name-validator.js'
+import {InvalidEventNameError} from '../../../../src/core/domain/errors/transport-error.js'
 
 describe('validateEventName', () => {
   describe('valid event names', () => {

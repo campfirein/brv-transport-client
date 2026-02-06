@@ -1,8 +1,8 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {TransportClient} from '../../infra/socket-io-client.js'
-import {TransportNotConnectedError} from '../../core/domain/errors/transport-error.js'
+import {TransportClient} from '../../src/infra/socket-io-client.js'
+import {TransportNotConnectedError} from '../../src/core/domain/errors/transport-error.js'
 
 describe('TransportClient', () => {
   let client: TransportClient
@@ -167,19 +167,6 @@ describe('TransportClient - State Management', () => {
     sinon.restore()
   })
 
-  it('should notify state handlers on state change', async () => {
-    const stateChanges: string[] = []
-    client.onStateChange((state) => {
-      stateChanges.push(state)
-    })
-
-    // Verify initial state
-    expect(client.getState()).to.equal('disconnected')
-
-    // State handlers are called when state changes (tested via internal behavior)
-    expect(stateChanges).to.be.an('array')
-  })
-
   it('should allow multiple state handlers', () => {
     const handler1 = sinon.spy()
     const handler2 = sinon.spy()
@@ -189,15 +176,6 @@ describe('TransportClient - State Management', () => {
 
     expect(unsub1).to.be.a('function')
     expect(unsub2).to.be.a('function')
-  })
-
-  it('should remove state handler when unsubscribed', () => {
-    const handler = sinon.spy()
-
-    const unsubscribe = client.onStateChange(handler)
-    unsubscribe()
-
-    // Handler should be removed - no way to verify directly but should not throw
   })
 })
 
@@ -313,93 +291,39 @@ describe('TransportClient - Configuration', () => {
   })
 })
 
-describe('TransportClient - ADR-006: Connection ID Tracking', () => {
-  it('should increment connection ID on each connect attempt', () => {
-    const client = new TransportClient()
-
-    // Access via internal testing - verify connection ID increments
-    // This test verifies the connection ID pattern exists and increments
-    expect(client).to.be.instanceOf(TransportClient)
-  })
-
-  it('should ignore connect events from superseded connections', async () => {
-    const client = new TransportClient()
-    const stateChangeSpy = sinon.spy()
-
-    client.onStateChange(stateChangeSpy)
-
-    // Simulate rapid connect/disconnect scenario
-    // The connection ID logic should prevent stale events from being processed
-
-    // Verify initial state
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should ignore connect_error events from superseded connections', () => {
-    const client = new TransportClient()
-
-    // Connection ID should prevent stale connect_error from affecting state
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should handle disconnect events only from current socket', () => {
-    const client = new TransportClient()
-
-    // Verify socket reference check prevents stale disconnect events
-    expect(client.getState()).to.equal('disconnected')
-  })
-
-  it('should handle reconnect events only from current socket', () => {
-    const client = new TransportClient()
-
-    // Verify reconnect event filtering by socket reference
-    expect(client.getState()).to.equal('disconnected')
-  })
-})
-
 describe('TransportClient - ADR-007: Promise Mutex', () => {
   it('should deduplicate concurrent connect() calls to same URL', async () => {
     const client = new TransportClient()
     const invalidUrl = 'http://localhost:99999' // Unreachable port
 
     // Launch two concurrent connects to same URL
-    const promise1 = client.connect(invalidUrl).catch(() => 'error1')
-    const promise2 = client.connect(invalidUrl).catch(() => 'error2')
+    // If deduplication broke, the second call would throw ConcurrentConnectionError
+    const promise1 = client.connect(invalidUrl).catch(() => 'rejected')
+    const promise2 = client.connect(invalidUrl).catch(() => 'rejected')
 
-    // Both should resolve/reject together (promise mutex deduplication)
-    const [result1, result2] = await Promise.all([promise1, promise2])
-
-    // Both should fail with same error
-    expect(result1).to.equal('error1')
-    expect(result2).to.equal('error2')
+    // Both should resolve/reject without ConcurrentConnectionError
+    await Promise.all([promise1, promise2])
   })
 
-  it('should throw error for concurrent connection to different URLs', async () => {
+  it('should not silently succeed when connecting to different URL after prior connect', async () => {
     const client = new TransportClient({connectTimeoutMs: 5000})
     const url1 = 'http://localhost:3001'
     const url2 = 'http://localhost:3002'
 
-    // Start first connection (will be in connecting state)
+    // Start first connection (will fail — nothing listening)
     const promise1 = client.connect(url1).catch((err) => err)
 
     // Give it a moment to enter connecting state
     await new Promise((resolve) => setTimeout(resolve, 10))
 
-    // Try to connect to different URL while first is in progress
-    // Should throw either ConcurrentConnectionError or InvalidOperationError
-    let errorThrown = false
+    // Second connect to different URL should error (either ConcurrentConnectionError
+    // if first is still in-flight, or TransportConnectionError if first already failed)
     try {
       await client.connect(url2)
       expect.fail('Should have thrown an error')
     } catch (error: unknown) {
-      errorThrown = true
       expect(error).to.be.instanceOf(Error)
-      // Verify it's a connection-related error
-      const errorMessage = (error as Error).message
-      expect(errorMessage.length).to.be.greaterThan(0)
     }
-
-    expect(errorThrown).to.be.true
 
     // Clean up first connection
     await promise1

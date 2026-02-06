@@ -1,9 +1,9 @@
 import {expect} from 'chai'
 import * as sinon from 'sinon'
 
-import {ConnectionStateManager} from '../../infra/connection-state-manager.js'
-import type {ConnectionState} from '../../core/interfaces/i-connection-state.js'
-import {InvalidStateTransitionError} from '../../core/domain/errors/transport-error.js'
+import {ConnectionStateManager} from '../../src/infra/connection-state-manager.js'
+import type {ConnectionState} from '../../src/core/interfaces/i-connection-state.js'
+import {InvalidStateTransitionError} from '../../src/core/domain/errors/transport-error.js'
 
 describe('ConnectionStateManager', () => {
   let stateManager: ConnectionStateManager
