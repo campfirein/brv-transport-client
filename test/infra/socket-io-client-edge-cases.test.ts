@@ -49,16 +49,6 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
       )
     })
 
-    it('should throw when request() called while disconnected', async () => {
-      try {
-        await client.request('test-request', {data: 'value'})
-        expect.fail('Should have thrown TransportNotConnectedError')
-      } catch (error) {
-        expect(error).to.be.instanceOf(TransportNotConnectedError)
-        expect((error as Error).message).to.include('Not connected to server')
-      }
-    })
-
     it('should throw when joinRoom() called while disconnected', async () => {
       try {
         await client.joinRoom('test-room')
@@ -95,7 +85,7 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
     })
 
     it('should throw for invalid event names in request()', () => {
-      // Will throw TransportNotConnectedError first, but validates event name
+      // Validates event name first (before connection check)
       expect(() => client.request('', {data: 'value'})).to.throw(Error)
     })
   })
@@ -322,7 +312,7 @@ describe('TransportClient - Edge Cases & Critical Paths', () => {
   })
 
   describe('Memory Management', () => {
-    it('should clean up handlers on disconnect', async () => {
+    it('should transition to disconnected state on disconnect', async () => {
       const handler = sinon.spy()
 
       client.on('event1', handler)

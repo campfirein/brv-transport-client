@@ -154,7 +154,11 @@ export class TransportClientFactory implements IClientFactory {
    * @throws InstanceStaleError - Instance found but heartbeat expired
    * @throws ConnectionFailedError - Instance found but connection failed
    */
-  public async connect(fromDir: string = process.cwd(), options?: RegistrationOptions): Promise<ConnectionResult> {
+  public async connect(
+    fromDir: string = process.cwd(),
+    options?: RegistrationOptions,
+    serverUrlResolver?: () => Promise<string | undefined>,
+  ): Promise<ConnectionResult> {
     this.log(`Discovering instance from ${fromDir}`)
     const result = await this.#discovery.discover(fromDir)
 
@@ -176,7 +180,12 @@ export class TransportClientFactory implements IClientFactory {
     const client = await this.connectWithRetry(url, instance.port, fromDir)
 
     // Auto-registration after successful connection (non-fatal)
-    await this.performRegistration(client, options)
+    const registrationStatus = await this.performRegistration(client, options)
+
+    // Set server URL resolver for daemon-aware reconnection (Tier 3)
+    if (serverUrlResolver) {
+      client.setServerUrlResolver(serverUrlResolver)
+    }
 
     // Join requested rooms after registration (e.g., broadcast-room for TUI)
     if (options?.joinRooms?.length) {
@@ -186,14 +195,14 @@ export class TransportClientFactory implements IClientFactory {
       }
     }
 
-    return Object.freeze({client, projectRoot})
+    return Object.freeze({client, projectRoot, registrationStatus})
   }
 
   /**
    * Connects to the instance with retry logic.
    * Includes HTTP warm-up to trigger sandbox permission requests.
    */
-  private async connectWithRetry(url: string, port: number, cwd: string): Promise<ITransportClient> {
+  private async connectWithRetry(url: string, port: number, cwd: string): Promise<TransportClient> {
     let lastError: Error | undefined
 
     // HTTP warm-up for sandbox environments
@@ -235,17 +244,17 @@ export class TransportClientFactory implements IClientFactory {
   }
 
   /**
-   * Attempts HTTP warm-up to trigger sandbox network permission.
-   * Uses hardcoded /socket.io/ path — the actual path doesn't matter since
-   * any HTTP request to host:port triggers the sandbox permission prompt.
+   * Sends an HTTP request to the Socket.IO polling endpoint before WebSocket connect.
+   * Serves two purposes: (1) triggers sandbox network permission prompt (Cursor, etc.),
+   * (2) confirms the server is reachable before attempting WebSocket upgrade.
    * Returns true if warm-up received a 2xx response, false otherwise.
    */
   private async httpWarmUp(url: string): Promise<boolean> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.#warmUpTimeoutMs)
 
-    // Path intentionally hardcoded — we only need to trigger the sandbox
-    // network permission prompt, not hit the actual Socket.IO endpoint.
+    // Standard Socket.IO polling endpoint — any HTTP request to host:port triggers
+    // sandbox permissions; using the real endpoint also confirms server reachability.
     const response = await fetch(`${url}/socket.io/?EIO=4&transport=polling`, {
       method: 'GET',
       signal: controller.signal,
@@ -313,13 +322,17 @@ export class TransportClientFactory implements IClientFactory {
    *
    * @param client - Connected transport client
    * @param options - Registration options (autoRegister defaults to true)
+   * @returns Registration outcome: 'success', 'failed', or 'skipped'
    */
-  private async performRegistration(client: ITransportClient, options?: RegistrationOptions): Promise<void> {
+  private async performRegistration(
+    client: ITransportClient,
+    options?: RegistrationOptions,
+  ): Promise<'failed' | 'skipped' | 'success'> {
     // Default: autoRegister = true
     const shouldRegister = options?.autoRegister ?? true
     if (!shouldRegister) {
       this.log('Registration skipped (autoRegister=false)')
-      return
+      return 'skipped'
     }
 
     const clientType = options?.clientType ?? 'cli'
@@ -339,19 +352,21 @@ export class TransportClientFactory implements IClientFactory {
       const validated = ClientRegisterResponseSchema.safeParse(response)
       if (!validated.success) {
         this.log(`Registration response validation failed: ${validated.error.message}`)
-        return
+        return 'failed'
       }
 
       if (!validated.data.success) {
         this.log(`Registration failed: ${validated.data.error ?? 'Unknown error'}`)
-        return
+        return 'failed'
       }
 
       this.log('Registration successful')
+      return 'success'
     } catch (error) {
       // Non-fatal: registration failure doesn't prevent usage
       const message = error instanceof Error ? error.message : String(error)
       this.log(`Registration error (non-fatal): ${message}`)
+      return 'failed'
     }
   }
 
@@ -406,16 +421,18 @@ export async function connectToTransport(fromDir?: string, options?: ConnectOpti
     clientType,
     joinRooms,
     projectPath,
+    // Extract server URL resolver
+    serverUrlResolver,
     // Rest are factory config
     ...factoryConfig
   } = options ?? {}
 
   const factory = new TransportClientFactory(factoryConfig)
 
-  // Pass registration options separately
+  // Pass registration options and resolver separately
   const registrationOptions = {autoRegister, clientType, joinRooms, projectPath}
 
-  return factory.connect(fromDir, registrationOptions)
+  return factory.connect(fromDir, registrationOptions, serverUrlResolver)
 }
 
 /**

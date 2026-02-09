@@ -51,6 +51,7 @@ export {
   ConnectionError,
   ConnectionFailedError,
   ConnectionTimeoutError,
+  DaemonSpawnError,
   InstanceCrashedError,
   InstanceStaleError,
   InvalidInstanceDataError,
@@ -115,16 +116,16 @@ export {
   AgentTerminationReasonSchema,
   ChunkTypeSchema,
   CipherConversationResetSchema,
-  ClientRegisterRequestSchema,
-  ClientRegisterResponseSchema,
-  ClientTypeSchema,
   CipherExecutionStartedSchema,
-  DaemonInstanceSchema,
   CipherExecutionTerminatedSchema,
   CipherLogSchema,
   CipherStateChangedSchema,
   CipherStateResetSchema,
   CipherUISchema,
+  ClientRegisterRequestSchema,
+  ClientRegisterResponseSchema,
+  ClientTypeSchema,
+  DaemonInstanceSchema,
   LlmChunkSchema,
   LlmErrorSchema,
   LlmOutputTruncatedSchema,
@@ -179,19 +180,18 @@ export type {
   ChunkType,
   // Cipher event types
   CipherConversationReset,
-  // Daemon types
-  DaemonInstance,
-  // Event maps (for typed handlers)
   CipherEventPayloadMap,
   CipherExecutionStarted,
-  // Client registration types
-  ClientRegisterRequest,
-  ClientRegisterResponse,
   CipherExecutionTerminated,
   CipherLog,
   CipherStateChanged,
   CipherStateReset,
   CipherUI,
+  // Client registration types
+  ClientRegisterRequest,
+  ClientRegisterResponse,
+  // Daemon types
+  DaemonInstance,
   // LLM event types
   LlmChunk,
   LlmError,
@@ -300,11 +300,15 @@ export {
 export {TransportClientFactory} from './infra/client-factory.js'
 
 // Daemon lifecycle - PRIMARY API
+export {connectToDaemon, type ConnectToDaemonDeps, type ConnectToDaemonOptions} from './infra/daemon-connector.js'
+
+// Daemon lifecycle - Auto-reconnection
 export {
-  connectToDaemon,
-  type ConnectToDaemonDeps,
-  type ConnectToDaemonOptions,
-} from './infra/daemon-connector.js'
+  createDaemonReconnector,
+  type DaemonReconnectorDeps,
+  type DaemonReconnectorHandle,
+  type DaemonReconnectorOptions,
+} from './infra/daemon-reconnector.js'
 
 // Daemon lifecycle - Spawner
 export {ensureDaemonRunning, type EnsureDaemonResult} from './infra/daemon-spawner.js'
@@ -327,6 +331,7 @@ export {getGlobalDataDir} from './infra/global-data-path.js'
 
 // Utilities
 export {isProcessAlive} from './infra/process-utils.js'
+export {waitForConnectedClient} from './infra/wait-for-connected-client.js'
 
 // Infrastructure implementations - Main client
 export {

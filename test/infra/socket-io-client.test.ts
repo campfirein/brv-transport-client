@@ -145,13 +145,8 @@ describe('TransportClient', () => {
   })
 
   describe('request()', () => {
-    it('should throw TransportNotConnectedError when not connected', async () => {
-      try {
-        await client.request('test-event', {data: 'test'})
-        expect.fail('Should have thrown')
-      } catch (error) {
-        expect(error).to.be.instanceOf(TransportNotConnectedError)
-      }
+    it('should throw TransportNotConnectedError when not connected', () => {
+      expect(() => client.request('test-event', {data: 'test'})).to.throw(TransportNotConnectedError)
     })
   })
 })
@@ -190,13 +185,11 @@ describe('TransportClient - Event Handler Lifecycle', () => {
     sinon.restore()
   })
 
-  it('should clean up event handlers on unsubscribe', () => {
+  it('should not throw when unsubscribing event handlers', () => {
     const handler = sinon.spy()
 
     const unsubscribe = client.on('test-event', handler)
-    unsubscribe()
-
-    // Handler should be removed
+    expect(() => unsubscribe()).to.not.throw()
   })
 
   it('should allow re-registering handler after unsubscribe', () => {

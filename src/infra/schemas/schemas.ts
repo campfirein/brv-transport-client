@@ -120,7 +120,7 @@ export const TaskErrorDataSchema = z.object({
  *
  * Required fields:
  * - pid: Process ID of daemon (positive integer)
- * - port: Transport server port (1024-65535)
+ * - port: Transport server port (49152-65535, IANA dynamic/private range)
  * - startedAt: Unix timestamp in milliseconds (positive integer)
  *
  * Note: Default strip mode allows forward-compatible daemon.json (unknown fields are ignored).

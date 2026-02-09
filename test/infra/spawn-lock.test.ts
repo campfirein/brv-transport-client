@@ -34,10 +34,7 @@ describe('SpawnLock', () => {
 
     it('should fail when lock is held by alive process', () => {
       // Write a lock held by current process
-      writeFileSync(
-        join(testDir, SPAWN_LOCK_FILE),
-        JSON.stringify({pid: process.pid, timestamp: Date.now()}),
-      )
+      writeFileSync(join(testDir, SPAWN_LOCK_FILE), JSON.stringify({pid: process.pid, timestamp: Date.now()}))
 
       const lock = new SpawnLock({dataDir: testDir})
       const result = lock.acquire()
@@ -49,10 +46,7 @@ describe('SpawnLock', () => {
     })
 
     it('should succeed when lock is held by dead process', () => {
-      writeFileSync(
-        join(testDir, SPAWN_LOCK_FILE),
-        JSON.stringify({pid: 999_999_999, timestamp: Date.now()}),
-      )
+      writeFileSync(join(testDir, SPAWN_LOCK_FILE), JSON.stringify({pid: 999_999_999, timestamp: Date.now()}))
 
       const lock = new SpawnLock({dataDir: testDir})
       const result = lock.acquire()
@@ -61,10 +55,7 @@ describe('SpawnLock', () => {
     })
 
     it('should succeed when lock timestamp is stale (>30s)', () => {
-      writeFileSync(
-        join(testDir, SPAWN_LOCK_FILE),
-        JSON.stringify({pid: process.pid, timestamp: Date.now() - 31_000}),
-      )
+      writeFileSync(join(testDir, SPAWN_LOCK_FILE), JSON.stringify({pid: process.pid, timestamp: Date.now() - 31_000}))
 
       const lock = new SpawnLock({dataDir: testDir})
       const result = lock.acquire()

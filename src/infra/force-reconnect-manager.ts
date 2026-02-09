@@ -27,6 +27,7 @@ export type ForceReconnectManagerConfig = {
   readonly reconnectionStrategy: IReconnectionStrategy
   readonly onAttempt: ReconnectAttemptCallback
   readonly onError?: ReconnectErrorCallback
+  readonly onExhausted?: () => void
 }
 
 // ============================================================================
@@ -71,6 +72,7 @@ export class ForceReconnectManager implements IForceReconnectManager {
   readonly #reconnectionStrategy: IReconnectionStrategy
   readonly #onAttempt: ReconnectAttemptCallback
   readonly #onError?: ReconnectErrorCallback
+  readonly #onExhausted?: () => void
 
   #attempt: number = 0
   #timer: NodeJS.Timeout | undefined
@@ -81,6 +83,7 @@ export class ForceReconnectManager implements IForceReconnectManager {
     this.#reconnectionStrategy = config.reconnectionStrategy
     this.#onAttempt = config.onAttempt
     this.#onError = config.onError
+    this.#onExhausted = config.onExhausted
   }
 
   /**
@@ -110,6 +113,7 @@ export class ForceReconnectManager implements IForceReconnectManager {
     const delay = this.#reconnectionStrategy.getDelay(this.#attempt)
     if (delay === undefined) {
       this.log('Reconnection strategy returned no delay, giving up')
+      this.#onExhausted?.()
       return
     }
 
@@ -171,6 +175,7 @@ export class ForceReconnectManager implements IForceReconnectManager {
     // Check if should continue
     if (!this.#reconnectionStrategy.shouldContinue(this.#attempt - 1)) {
       this.log('Force reconnect gave up after max attempts')
+      this.#onExhausted?.()
       return
     }
 

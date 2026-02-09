@@ -108,5 +108,4 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       return undefined
     }
   }
-
 }

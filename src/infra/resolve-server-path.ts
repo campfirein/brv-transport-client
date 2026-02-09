@@ -52,7 +52,7 @@ function autoResolveFromPath(): string {
   }
 
   throw new Error(
-    'Cannot resolve brv-server.js path. '
-    + 'Ensure `brv` is installed globally and in PATH, or set BRV_SERVER_MAIN environment variable.',
+    'Cannot resolve brv-server.js path. ' +
+      'Ensure `brv` is installed globally and in PATH, or set BRV_SERVER_MAIN environment variable.',
   )
 }

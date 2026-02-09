@@ -1,4 +1,4 @@
-import {mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync} from 'node:fs'
+import {closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync} from 'node:fs'
 import {dirname, join} from 'node:path'
 import {z} from 'zod'
 
@@ -25,7 +25,9 @@ function isValidSpawnLockData(value: unknown): value is SpawnLockData {
  * File-based spawn lock to prevent multiple clients from
  * spawning multiple daemon processes simultaneously.
  *
- * Uses atomic temp+rename pattern (same as GlobalInstanceManager).
+ * Uses O_EXCL (exclusive create) for truly atomic cross-process locking.
+ * openSync('wx') fails with EEXIST if the file already exists, guaranteeing
+ * that only one process can create the lock file.
  *
  * Lock is considered stale (can be overwritten) if:
  * - PID is dead
@@ -33,70 +35,90 @@ function isValidSpawnLockData(value: unknown): value is SpawnLockData {
  * - File is corrupted or missing
  */
 export class SpawnLock implements ISpawnLock {
-  private acquired = false
-  private readonly lockPath: string
+  #acquired = false
+  readonly #lockPath: string
 
   constructor(options?: {dataDir?: string}) {
     const dataDir = options?.dataDir ?? getGlobalDataDir()
-    this.lockPath = join(dataDir, SPAWN_LOCK_FILE)
+    this.#lockPath = join(dataDir, SPAWN_LOCK_FILE)
   }
 
   acquire(): SpawnLockAcquireResult {
+    mkdirSync(dirname(this.#lockPath), {recursive: true})
+
+    // First attempt: exclusive create (O_CREAT | O_EXCL) — truly atomic across processes.
+    // Unlike rename (which overwrites silently), openSync('wx') fails with EEXIST
+    // if another process created the file first.
+    const firstAttempt = this.tryExclusiveCreate()
+    if (firstAttempt.acquired || firstAttempt.reason === 'write_failed') {
+      return firstAttempt
+    }
+
+    // Lock file exists — check if held by an active process
     if (this.isLockHeld()) {
       return {acquired: false, reason: 'held_by_another_process'}
     }
 
-    const tempPath = `${this.lockPath}.${process.pid}.tmp`
-    const data: SpawnLockData = {pid: process.pid, timestamp: Date.now()}
-
-    // Ensure directory exists (matches GlobalInstanceManager.acquire() pattern)
-    mkdirSync(dirname(this.lockPath), {recursive: true})
-
+    // Lock is stale (dead PID or expired timestamp) — remove and retry once.
+    // If two processes both remove the stale lock, only one will win the
+    // exclusive create on retry (O_EXCL guarantees this).
     try {
-      writeFileSync(tempPath, JSON.stringify(data))
-      renameSync(tempPath, this.lockPath)
+      unlinkSync(this.#lockPath)
     } catch {
-      try {
-        unlinkSync(tempPath)
-      } catch {
-        // Ignore cleanup error
-      }
-
-      return {acquired: false, reason: 'write_failed'}
+      // File may have been removed by another process — that's fine
     }
 
-    // Read-back verification: detect loss in concurrent rename race.
-    // Two processes can both rename successfully (POSIX rename is atomic
-    // but overwrites silently). Verify our PID is actually in the file.
-    if (!this.verifyOwnership()) {
-      return {acquired: false, reason: 'held_by_another_process'}
-    }
-
-    this.acquired = true
-    return {acquired: true}
+    return this.tryExclusiveCreate()
   }
 
   release(): void {
-    if (!this.acquired) return
+    if (!this.#acquired) return
     try {
-      unlinkSync(this.lockPath)
+      if (!this.verifyOwnership()) {
+        this.#acquired = false
+        return
+      }
+
+      unlinkSync(this.#lockPath)
     } catch {
       // Best-effort delete
     }
 
-    this.acquired = false
+    this.#acquired = false
+  }
+
+  private tryExclusiveCreate(): SpawnLockAcquireResult {
+    try {
+      const data: SpawnLockData = {pid: process.pid, timestamp: Date.now()}
+      // 'wx' = O_WRONLY | O_CREAT | O_EXCL — fails with EEXIST if file exists
+      const fd = openSync(this.#lockPath, 'wx')
+      writeSync(fd, JSON.stringify(data))
+      closeSync(fd)
+
+      this.#acquired = true
+      return {acquired: true}
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST') {
+        return {acquired: false, reason: 'held_by_another_process'}
+      }
+
+      return {acquired: false, reason: 'write_failed'}
+    }
   }
 
   private isLockHeld(): boolean {
     try {
-      const content = readFileSync(this.lockPath, 'utf8')
+      const content = readFileSync(this.#lockPath, 'utf8')
       const parsed: unknown = JSON.parse(content)
       if (!isValidSpawnLockData(parsed)) return false
 
       // Stale if PID is dead
       if (!isProcessAlive(parsed.pid)) return false
 
-      // Stale if older than threshold
+      // Stale if older than threshold.
+      // Note: Unlike isHeartbeatStale(), future timestamps (clock skew) are NOT
+      // treated as stale here. The PID alive check above is the primary guard;
+      // the timestamp is secondary (prevents indefinitely held locks from crashed processes).
       if (Date.now() - parsed.timestamp > SPAWN_LOCK_STALE_THRESHOLD_MS) return false
 
       return true
@@ -107,7 +129,7 @@ export class SpawnLock implements ISpawnLock {
 
   private verifyOwnership(): boolean {
     try {
-      const content = readFileSync(this.lockPath, 'utf8')
+      const content = readFileSync(this.#lockPath, 'utf8')
       const parsed: unknown = JSON.parse(content)
       if (!isValidSpawnLockData(parsed)) return false
       return parsed.pid === process.pid

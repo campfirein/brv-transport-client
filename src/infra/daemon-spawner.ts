@@ -155,7 +155,11 @@ async function pollForDaemon(
  * Used when an unhealthy daemon (version mismatch or stale heartbeat)
  * needs to be stopped before spawning a replacement.
  */
-async function gracefullyStopDaemon(pid: number, deadline: number, pollIntervalMs = DAEMON_STOP_POLL_INTERVAL_MS): Promise<void> {
+async function gracefullyStopDaemon(
+  pid: number,
+  deadline: number,
+  pollIntervalMs = DAEMON_STOP_POLL_INTERVAL_MS,
+): Promise<void> {
   try {
     process.kill(pid, 'SIGTERM')
   } catch {

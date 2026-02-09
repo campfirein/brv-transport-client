@@ -96,12 +96,13 @@ Dependencies flow inward only:
 ```
 Infrastructure (src/infra/)     → can import from Interfaces & Domain
 Interfaces (src/core/interfaces/) → can import from Domain only
-Domain (src/core/domain/)         → ZERO external dependencies
+Domain (src/core/domain/)         → No external packages, no Interfaces/Infra imports
 ```
 
 Never violate:
 - Domain must not import from Interfaces or Infrastructure
-- Domain must not have external dependencies (no Zod, no Socket.IO)
+- Domain must not use external packages (no Zod, no Socket.IO, no Node APIs)
+- Pure value constants from `src/constants.ts` are acceptable in Domain
 - Interfaces must not import from Infrastructure
 
 ## Directory & Path Concepts

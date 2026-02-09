@@ -9,6 +9,8 @@ export type ConnectionResult = {
   readonly client: ITransportClient
   /** Project root (directory containing .brv/). Undefined if not in a brv project (e.g., MCP global). */
   readonly projectRoot?: string
+  /** Registration outcome. Undefined only when factory doesn't support registration reporting. */
+  readonly registrationStatus?: 'failed' | 'skipped' | 'success'
 }
 
 /**

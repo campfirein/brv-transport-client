@@ -23,12 +23,12 @@ export type {DaemonAcquireResult, DaemonInstanceInfo} from '../core/interfaces/i
  * - Synchronous I/O for critical section reliability
  */
 export class GlobalInstanceManager implements IGlobalInstanceManager {
-  private readonly dataDir: string
-  private readonly instancePath: string
+  readonly #dataDir: string
+  readonly #instancePath: string
 
   constructor(options?: {dataDir?: string}) {
-    this.dataDir = options?.dataDir ?? getGlobalDataDir()
-    this.instancePath = join(this.dataDir, DAEMON_INSTANCE_FILE)
+    this.#dataDir = options?.dataDir ?? getGlobalDataDir()
+    this.#instancePath = join(this.#dataDir, DAEMON_INSTANCE_FILE)
   }
 
   /**
@@ -51,16 +51,16 @@ export class GlobalInstanceManager implements IGlobalInstanceManager {
     }
 
     // Ensure directory exists
-    mkdirSync(this.dataDir, {recursive: true})
+    mkdirSync(this.#dataDir, {recursive: true})
 
     // Atomic write: temp file → rename
     // NOTE: Unlike SpawnLock, no read-back verification is needed here.
     // acquire() is only called from the daemon process itself (brv-server.ts),
     // which is protected by the spawn lock — only one daemon can be spawning at a time.
-    const tempPath = this.instancePath + '.tmp.' + process.pid
+    const tempPath = this.#instancePath + '.tmp.' + process.pid
     try {
       writeFileSync(tempPath, JSON.stringify(instance, null, 2))
-      renameSync(tempPath, this.instancePath)
+      renameSync(tempPath, this.#instancePath)
     } catch {
       // Clean up temp file on failure
       try {
@@ -81,7 +81,7 @@ export class GlobalInstanceManager implements IGlobalInstanceManager {
    */
   load(): DaemonInstanceInfo | undefined {
     try {
-      const content = readFileSync(this.instancePath, 'utf8')
+      const content = readFileSync(this.#instancePath, 'utf8')
       const json: unknown = JSON.parse(content)
       const result = DaemonInstanceSchema.safeParse(json)
       if (result.success) {
@@ -108,7 +108,7 @@ export class GlobalInstanceManager implements IGlobalInstanceManager {
         return
       }
 
-      unlinkSync(this.instancePath)
+      unlinkSync(this.#instancePath)
     } catch {
       // Best-effort delete
     }

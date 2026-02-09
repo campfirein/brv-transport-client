@@ -1,6 +1,8 @@
 import type {ClientType} from '../core/domain/types.js'
 import type {ConnectionResult} from '../core/interfaces/i-client-factory.js'
 
+import {DaemonSpawnError} from '../core/domain/errors/connection-error.js'
+
 import {connectToTransport} from './client-factory.js'
 import {DaemonInstanceDiscovery} from './daemon-instance-discovery.js'
 import {type EnsureDaemonResult, ensureDaemonRunning} from './daemon-spawner.js'
@@ -46,7 +48,7 @@ const defaultDeps: ConnectToDaemonDeps = {
  * 1. ensureDaemonRunning() — spawns daemon if needed (fast no-op if already running)
  * 2. connectToTransport() — discovers instance, connects Socket.IO, registers, joins rooms
  *
- * @throws Error if daemon fails to start within timeout
+ * @throws DaemonSpawnError if daemon fails to start within timeout
  * @throws ConnectionError (from transport-client) if connection fails
  */
 export async function connectToDaemon(
@@ -59,16 +61,26 @@ export async function connectToDaemon(
   const ensureOptions = version || serverPath ? {serverPath, version} : undefined
   const daemonResult = await deps.ensureDaemonRunning(ensureOptions)
   if (!daemonResult.success) {
-    const detail = daemonResult.spawnError ? `: ${daemonResult.spawnError}` : ''
-    throw new Error(`Failed to start daemon: timed out waiting for daemon to become ready${detail}`)
+    throw new DaemonSpawnError(daemonResult.spawnError)
   }
 
   // 2. Connect + register + join rooms (all handled by transport-client)
+  //    Include serverUrlResolver for daemon-aware reconnection (Tier 3 fallback)
   return deps.connectToTransport(fromDir, {
     autoRegister: !skipRegistration,
     clientType,
     discovery: new DaemonInstanceDiscovery(),
     joinRooms,
     projectPath,
+    serverUrlResolver: async () => {
+      // Spawn daemon if needed (fast no-op if already running)
+      const result = await deps.ensureDaemonRunning(ensureOptions)
+      if (!result.success) return undefined
+
+      // Discover new instance (possibly on new port)
+      const disc = new DaemonInstanceDiscovery()
+      const found = await disc.discover(fromDir ?? process.cwd())
+      return found.found ? found.instance.getTransportUrl() : undefined
+    },
   })
 }

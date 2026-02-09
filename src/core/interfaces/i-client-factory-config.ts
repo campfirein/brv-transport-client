@@ -160,4 +160,8 @@ export type RegistrationOptions = {
  * })
  * ```
  */
-export type ConnectOptions = TransportClientFactoryConfig & RegistrationOptions
+export type ConnectOptions = TransportClientFactoryConfig &
+  RegistrationOptions & {
+    /** Fallback URL resolver when all reconnection attempts are exhausted (Tier 3). */
+    readonly serverUrlResolver?: () => Promise<string | undefined>
+  }

@@ -110,6 +110,28 @@ export class ConnectionTimeoutError extends ConnectionError {
 }
 
 /**
+ * Error thrown when daemon fails to start (spawn timeout).
+ */
+export class DaemonSpawnError extends ConnectionError {
+  public readonly spawnError?: string
+
+  public constructor(spawnError?: string)
+  public constructor(options: {message: string})
+  public constructor(spawnErrorOrOptions?: string | {message: string}) {
+    if (typeof spawnErrorOrOptions === 'object' && spawnErrorOrOptions !== null) {
+      // Custom message override
+      super(spawnErrorOrOptions.message)
+    } else {
+      // Auto-generate message
+      const detail = spawnErrorOrOptions ? `: ${spawnErrorOrOptions}` : ''
+      super(`Failed to start daemon: timed out waiting for daemon to become ready${detail}`)
+      this.spawnError = spawnErrorOrOptions
+    }
+    this.name = 'DaemonSpawnError'
+  }
+}
+
+/**
  * Error thrown when instance data is invalid or malformed.
  */
 export class InvalidInstanceDataError extends ConnectionError {

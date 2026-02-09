@@ -240,6 +240,11 @@ export class TransportClient implements ITransportClient {
   #socket: Socket | undefined
   #serverUrl: string | undefined
 
+  // Server URL resolver fallback (Tier 3 reconnection — daemon-aware)
+  #serverUrlResolver: (() => Promise<string | undefined>) | undefined
+  #urlResolveTimer: ReturnType<typeof setTimeout> | undefined
+  #urlResolveAttempt: number = 0
+
   /**
    * Internal getter for socket access within this class.
    * Provides convenient syntax for internal use.
@@ -340,6 +345,9 @@ export class TransportClient implements ITransportClient {
       reconnectionStrategy: this.#reconnectionStrategy,
       onAttempt: () => this.handleForceReconnectAttempt(),
       onError: options?.onReconnectError,
+      onExhausted: () => {
+        void this.handleServerUrlResolve()
+      },
     })
   }
 
@@ -399,6 +407,11 @@ export class TransportClient implements ITransportClient {
     // Reset force reconnect state on manual connect
     this.#forceReconnectManager.cancel()
 
+    // Reset URL resolve state on successful manual connect
+    clearTimeout(this.#urlResolveTimer)
+    this.#urlResolveTimer = undefined
+    this.#urlResolveAttempt = 0
+
     // Create mutex promise to deduplicate concurrent calls
     this.#connectPromise = this.establishConnection(url).finally(() => {
       this.#connectPromise = undefined
@@ -433,6 +446,11 @@ export class TransportClient implements ITransportClient {
 
     // Cancel force reconnect and reset strategy state
     this.#forceReconnectManager.cancel()
+
+    // Clear URL resolve state (keep resolver — set once by connectToDaemon)
+    clearTimeout(this.#urlResolveTimer)
+    this.#urlResolveTimer = undefined
+    this.#urlResolveAttempt = 0
 
     // Stop wake detection
     this.stopWakeDetection()
@@ -622,6 +640,24 @@ export class TransportClient implements ITransportClient {
   }
 
   // ==========================================================================
+  // Public: Server URL Resolver (Tier 3 Reconnection)
+  // ==========================================================================
+
+  /**
+   * Sets a fallback URL resolver for when all reconnection attempts are exhausted.
+   * Called by connectToDaemon() to enable daemon-aware reconnection.
+   *
+   * When ForceReconnectManager exhausts all attempts (Tier 2), the resolver is
+   * invoked to discover (and optionally spawn) the daemon on a new port.
+   * If a new URL is returned, ForceReconnectManager restarts with fresh attempts.
+   *
+   * @param resolver - Async function that returns a new server URL, or undefined to give up
+   */
+  public setServerUrlResolver(resolver: () => Promise<string | undefined>): void {
+    this.#serverUrlResolver = resolver
+  }
+
+  // ==========================================================================
   // Private: Connection Management
   // ==========================================================================
 
@@ -782,7 +818,9 @@ export class TransportClient implements ITransportClient {
               resolve(true)
             } else if (Date.now() - startTime > TRANSPORT_RECONNECT_WAIT_CONNECTED_MS) {
               clearInterval(checkInterval)
-              this.log(`Timeout waiting for socket.connected (${TRANSPORT_RECONNECT_WAIT_CONNECTED_MS}ms), proceeding anyway`)
+              this.log(
+                `Timeout waiting for socket.connected (${TRANSPORT_RECONNECT_WAIT_CONNECTED_MS}ms), proceeding anyway`,
+              )
               resolve(false)
             }
           }, TRANSPORT_RECONNECT_POLL_INTERVAL_MS)
@@ -897,6 +935,59 @@ export class TransportClient implements ITransportClient {
         }
       }, TRANSPORT_ROOM_REJOIN_SETTLE_MS)
     }
+  }
+
+  // ==========================================================================
+  // Private: Server URL Resolution (Tier 3 Reconnection)
+  // ==========================================================================
+
+  /**
+   * Attempts to resolve a new server URL after ForceReconnectManager exhausts.
+   * Called via onExhausted callback when all Tier 2 reconnect attempts fail.
+   *
+   * On success: updates #serverUrl and restarts ForceReconnectManager.
+   * On failure: retries with exponential backoff (2s → 30s cap).
+   */
+  private async handleServerUrlResolve(): Promise<void> {
+    if (!this.#serverUrlResolver) return
+    if (!this.#stateManager.isDisconnected()) return
+
+    this.#urlResolveAttempt++
+    this.log(`Server URL resolve attempt ${this.#urlResolveAttempt}`)
+
+    try {
+      const newUrl = await this.#serverUrlResolver()
+      if (!newUrl) {
+        this.log('Server URL resolver returned no URL')
+        this.scheduleUrlResolveRetry()
+        return
+      }
+
+      this.log(`Resolved new server URL: ${newUrl}`)
+      this.#serverUrl = newUrl
+      this.#urlResolveAttempt = 0
+      this.#forceReconnectManager.restart()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.log(`Server URL resolve failed: ${message}`)
+      this.scheduleUrlResolveRetry()
+    }
+  }
+
+  /**
+   * Schedules the next URL resolve retry with exponential backoff.
+   */
+  private scheduleUrlResolveRetry(): void {
+    if (!this.#stateManager.isDisconnected()) return
+
+    const baseDelay = 2000
+    const maxDelay = 30_000
+    const backoff = 1.5
+    const delay = Math.min(baseDelay * Math.pow(backoff, this.#urlResolveAttempt - 1), maxDelay)
+    this.log(`Scheduling URL resolve retry in ${Math.round(delay)}ms`)
+    this.#urlResolveTimer = setTimeout(() => {
+      void this.handleServerUrlResolve()
+    }, delay)
   }
 
   // ==========================================================================

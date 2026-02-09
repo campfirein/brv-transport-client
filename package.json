@@ -18,7 +18,7 @@
     "build": "rm -rf dist && tsc",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint --fix . && prettier --write .",
-    "test": "mocha",
+    "test": "npm run typecheck && mocha && npm run lint",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build"
   },

@@ -4,7 +4,7 @@ import {existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from 'node
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 
-import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../../src/constants.js'
+import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE, SPAWN_LOCK_FILE} from '../../src/constants.js'
 import {ensureDaemonRunning} from '../../src/infra/daemon-spawner.js'
 
 describe('daemon-spawner', () => {
@@ -30,7 +30,7 @@ describe('daemon-spawner', () => {
         join(testDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({pid: process.pid, port, startedAt: Date.now(), version: '1.6.0'}),
       )
-      writeFileSync(join(testDir, 'heartbeat'), String(Date.now()))
+      writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
       const result = await ensureDaemonRunning({dataDir: testDir})
 
@@ -44,10 +44,7 @@ describe('daemon-spawner', () => {
 
     it('should wait when another client is spawning (lock held), then detect daemon', async () => {
       // Pre-acquire lock to simulate another client spawning
-      writeFileSync(
-        join(testDir, 'spawn.lock'),
-        JSON.stringify({pid: process.pid, timestamp: Date.now()}),
-      )
+      writeFileSync(join(testDir, SPAWN_LOCK_FILE), JSON.stringify({pid: process.pid, timestamp: Date.now()}))
 
       // After 20ms, simulate daemon becoming ready
       setTimeout(() => {
@@ -55,7 +52,7 @@ describe('daemon-spawner', () => {
           join(testDir, DAEMON_INSTANCE_FILE),
           JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
         )
-        writeFileSync(join(testDir, 'heartbeat'), String(Date.now()))
+        writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
       }, 20)
 
       const result = await ensureDaemonRunning({dataDir: testDir, pollIntervalMs: 10, timeoutMs: 500})
@@ -83,24 +80,20 @@ describe('daemon-spawner', () => {
       expect(result.success).to.be.false
 
       // spawn.lock should be cleaned up
-      expect(existsSync(join(testDir, 'spawn.lock'))).to.be.false
+      expect(existsSync(join(testDir, SPAWN_LOCK_FILE))).to.be.false
     })
 
-    it('should return started=false when daemon appears between discover and lock', async () => {
-      // Write a lock file that is stale (dead PID) so our acquire succeeds
-      // but then daemon appears on re-check
+    it('should detect running daemon on initial discover even when stale lock exists', async () => {
+      // Stale lock file exists alongside valid daemon files. Fast path (step 1) finds daemon before lock is checked.
       const deadPid = 999_999_999
-      writeFileSync(
-        join(testDir, 'spawn.lock'),
-        JSON.stringify({pid: deadPid, timestamp: Date.now()}),
-      )
+      writeFileSync(join(testDir, SPAWN_LOCK_FILE), JSON.stringify({pid: deadPid, timestamp: Date.now()}))
 
       // Write daemon files — these will be found on the re-check after lock acquisition
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({pid: process.pid, port: 49_850, startedAt: Date.now(), version: '1.6.0'}),
       )
-      writeFileSync(join(testDir, 'heartbeat'), String(Date.now()))
+      writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
       const result = await ensureDaemonRunning({dataDir: testDir})
 
@@ -168,7 +161,12 @@ describe('daemon-spawner', () => {
         process.kill(childPid, 0)
 
         // ensureDaemonRunning with newer version should kill the old daemon
-        const result = await ensureDaemonRunning({dataDir: testDir, pollIntervalMs: 10, timeoutMs: 50, version: '1.6.0'})
+        const result = await ensureDaemonRunning({
+          dataDir: testDir,
+          pollIntervalMs: 10,
+          timeoutMs: 50,
+          version: '1.6.0',
+        })
 
         // The old process must be dead (SIGTERM was sent)
         let isAlive = false
@@ -283,7 +281,12 @@ describe('daemon-spawner', () => {
           writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
         }, 30)
 
-        const result = await ensureDaemonRunning({dataDir: testDir, pollIntervalMs: 10, timeoutMs: 500, version: '1.6.0'})
+        const result = await ensureDaemonRunning({
+          dataDir: testDir,
+          pollIntervalMs: 10,
+          timeoutMs: 500,
+          version: '1.6.0',
+        })
 
         // Old process must be dead
         let isAlive = false

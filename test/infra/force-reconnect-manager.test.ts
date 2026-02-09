@@ -218,6 +218,97 @@ describe('ForceReconnectManager', () => {
     })
   })
 
+  describe('onExhausted callback', () => {
+    it('should fire onExhausted when strategy returns undefined delay in schedule()', () => {
+      const onAttempt = sinon.stub().rejects(new Error('fail'))
+      const onExhausted = sinon.stub()
+
+      const manager = new ForceReconnectManager({
+        logger,
+        reconnectionStrategy: new ExponentialBackoffStrategy({
+          delays: [100, 200, 400],
+          maxAttempts: 3,
+          jitterFactor: 0,
+        }),
+        onAttempt,
+        onExhausted,
+      })
+
+      // Attempt 1 (delay=100ms)
+      manager.schedule()
+      clock.tick(100)
+
+      // Wait for async executeAttempt to complete and reschedule
+      return Promise.resolve()
+        .then(() => Promise.resolve())
+        .then(() => {
+          // Attempt 2 (delay=200ms)
+          clock.tick(200)
+          return Promise.resolve().then(() => Promise.resolve())
+        })
+        .then(() => {
+          // Attempt 3 (delay=400ms)
+          clock.tick(400)
+          return Promise.resolve().then(() => Promise.resolve())
+        })
+        .then(() => {
+          // After attempt 3, shouldContinue(2) returns false → onExhausted fires
+          expect(onExhausted.called).to.be.true
+        })
+    })
+
+    it('should not fire onExhausted when not provided', async () => {
+      const onAttempt = sinon.stub().rejects(new Error('fail'))
+
+      const limitedStrategy = new ExponentialBackoffStrategy({
+        delays: [100],
+        maxAttempts: 1,
+        jitterFactor: 0,
+      })
+
+      const manager = new ForceReconnectManager({
+        logger,
+        reconnectionStrategy: limitedStrategy,
+        onAttempt,
+        // onExhausted intentionally omitted
+      })
+
+      // Should not throw when onExhausted is not set
+      manager.schedule()
+      clock.tick(100)
+      await Promise.resolve()
+      await Promise.resolve()
+
+      // Strategy exhausted but no callback — no error
+      expect(manager.isScheduled).to.be.false
+    })
+
+    it('should fire onExhausted from schedule() when strategy has no more delays', () => {
+      const onAttempt = sinon.stub().resolves()
+      const onExhausted = sinon.stub()
+
+      // Mock strategy that always returns undefined (exhausted from the start)
+      const exhaustedStrategy = {
+        getDelay: sinon.stub().returns(undefined),
+        shouldContinue: sinon.stub().returns(false),
+        reset: sinon.stub(),
+      }
+
+      const manager = new ForceReconnectManager({
+        logger,
+        reconnectionStrategy: exhaustedStrategy,
+        onAttempt,
+        onExhausted,
+      })
+
+      manager.schedule()
+
+      expect(onExhausted.calledOnce).to.be.true
+      expect(manager.isScheduled).to.be.false
+      expect(onAttempt.called).to.be.false
+    })
+  })
+
   describe('onError callback', () => {
     it('should call onError when attempt fails', async () => {
       const onAttempt = sinon.stub().rejects(new Error('Connection failed'))

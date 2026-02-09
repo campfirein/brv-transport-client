@@ -103,11 +103,14 @@ describe('daemon-connector', () => {
     // --- TUI path ---
 
     it('should pass joinRooms for TUI clients', async () => {
-      await connectToDaemon({
-        clientType: 'tui',
-        joinRooms: ['broadcast-room'],
-        projectPath: '/my/project',
-      }, deps)
+      await connectToDaemon(
+        {
+          clientType: 'tui',
+          joinRooms: ['broadcast-room'],
+          projectPath: '/my/project',
+        },
+        deps,
+      )
 
       const [, options] = connectToTransportStub.firstCall.args
       expect(options.clientType).to.equal('tui')
@@ -118,12 +121,15 @@ describe('daemon-connector', () => {
     // --- MCP project mode ---
 
     it('should pass projectPath for MCP project mode', async () => {
-      await connectToDaemon({
-        clientType: 'mcp',
-        fromDir: '/my/project',
-        projectPath: '/my/project',
-        version: '1.6.0',
-      }, deps)
+      await connectToDaemon(
+        {
+          clientType: 'mcp',
+          fromDir: '/my/project',
+          projectPath: '/my/project',
+          version: '1.6.0',
+        },
+        deps,
+      )
 
       const [fromDir, options] = connectToTransportStub.firstCall.args
       expect(fromDir).to.equal('/my/project')
@@ -134,11 +140,14 @@ describe('daemon-connector', () => {
     // --- MCP global mode ---
 
     it('should omit projectPath for MCP global mode', async () => {
-      await connectToDaemon({
-        clientType: 'mcp',
-        fromDir: '/some/dir',
-        version: '1.6.0',
-      }, deps)
+      await connectToDaemon(
+        {
+          clientType: 'mcp',
+          fromDir: '/some/dir',
+          version: '1.6.0',
+        },
+        deps,
+      )
 
       const [, options] = connectToTransportStub.firstCall.args
       expect(options.clientType).to.equal('mcp')
@@ -169,6 +178,114 @@ describe('daemon-connector', () => {
       const [, options] = connectToTransportStub.firstCall.args
       expect(options.discovery).to.exist
       expect(options.discovery.constructor.name).to.equal('DaemonInstanceDiscovery')
+    })
+
+    // --- serverUrlResolver (Tier 3 reconnection) ---
+
+    it('should pass a serverUrlResolver function to connectToTransport', async () => {
+      await connectToDaemon({clientType: 'cli'}, deps)
+
+      const [, options] = connectToTransportStub.firstCall.args
+      expect(options.serverUrlResolver).to.be.a('function')
+    })
+
+    describe('serverUrlResolver', () => {
+      it('should call ensureDaemonRunning and discover new instance', async () => {
+        await connectToDaemon({clientType: 'cli', fromDir: '/my/project'}, deps)
+
+        const [, options] = connectToTransportStub.firstCall.args
+        const resolver = options.serverUrlResolver as () => Promise<string | undefined>
+
+        // Reset stubs to track resolver calls separately
+        ensureDaemonRunningStub.resetHistory()
+
+        // Stub DaemonInstanceDiscovery.discover() via prototype
+        const {DaemonInstanceDiscovery} = await import('../../src/infra/daemon-instance-discovery.js')
+        const discoverStub = stub(DaemonInstanceDiscovery.prototype, 'discover').resolves({
+          found: true,
+          instance: {getTransportUrl: () => 'http://localhost:55555'} as never,
+          projectRoot: '/my/project',
+        })
+
+        try {
+          const url = await resolver()
+
+          expect(ensureDaemonRunningStub.calledOnce).to.be.true
+          expect(discoverStub.calledOnce).to.be.true
+          expect(discoverStub.calledWith('/my/project')).to.be.true
+          expect(url).to.equal('http://localhost:55555')
+        } finally {
+          discoverStub.restore()
+        }
+      })
+
+      it('should return undefined when ensureDaemonRunning fails', async () => {
+        await connectToDaemon({clientType: 'cli'}, deps)
+
+        const [, options] = connectToTransportStub.firstCall.args
+        const resolver = options.serverUrlResolver as () => Promise<string | undefined>
+
+        // Make ensureDaemonRunning fail on resolver call
+        ensureDaemonRunningStub.resolves({reason: 'timeout', success: false})
+
+        const url = await resolver()
+        expect(url).to.be.undefined
+      })
+
+      it('should return undefined when discovery finds no instance', async () => {
+        await connectToDaemon({clientType: 'cli', fromDir: '/my/project'}, deps)
+
+        const [, options] = connectToTransportStub.firstCall.args
+        const resolver = options.serverUrlResolver as () => Promise<string | undefined>
+
+        const {DaemonInstanceDiscovery} = await import('../../src/infra/daemon-instance-discovery.js')
+        const discoverStub = stub(DaemonInstanceDiscovery.prototype, 'discover').resolves({
+          found: false,
+          reason: 'no_instance',
+        })
+
+        try {
+          const url = await resolver()
+          expect(url).to.be.undefined
+        } finally {
+          discoverStub.restore()
+        }
+      })
+
+      it('should pass serverPath and version to ensureDaemonRunning in resolver', async () => {
+        await connectToDaemon({clientType: 'cli', serverPath: '/custom/brv.js', version: '2.0.0'}, deps)
+
+        const [, options] = connectToTransportStub.firstCall.args
+        const resolver = options.serverUrlResolver as () => Promise<string | undefined>
+
+        ensureDaemonRunningStub.resetHistory()
+        // Make it fail so we don't need to stub discovery
+        ensureDaemonRunningStub.resolves({reason: 'timeout', success: false})
+
+        await resolver()
+
+        expect(ensureDaemonRunningStub.calledWith({serverPath: '/custom/brv.js', version: '2.0.0'})).to.be.true
+      })
+
+      it('should use process.cwd() when fromDir is not provided', async () => {
+        await connectToDaemon({clientType: 'cli'}, deps)
+
+        const [, options] = connectToTransportStub.firstCall.args
+        const resolver = options.serverUrlResolver as () => Promise<string | undefined>
+
+        const {DaemonInstanceDiscovery} = await import('../../src/infra/daemon-instance-discovery.js')
+        const discoverStub = stub(DaemonInstanceDiscovery.prototype, 'discover').resolves({
+          found: false,
+          reason: 'no_instance',
+        })
+
+        try {
+          await resolver()
+          expect(discoverStub.calledWith(process.cwd())).to.be.true
+        } finally {
+          discoverStub.restore()
+        }
+      })
     })
   })
 })

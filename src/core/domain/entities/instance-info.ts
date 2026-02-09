@@ -1,3 +1,4 @@
+import {DAEMON_PORT_MAX, DAEMON_PORT_MIN} from '../../../constants.js'
 import {InvalidInstanceDataError} from '../errors/connection-error.js'
 
 /**
@@ -109,13 +110,16 @@ export class InstanceInfo {
       throw new InvalidInstanceDataError('pid must be a positive integer', 'pid', obj.pid)
     }
 
-    // Validate port — IANA dynamic/private range (49152-65535)
-    // Must match DAEMON_PORT_MIN/MAX in constants.ts
+    // Validate port — IANA dynamic/private range
     if (typeof obj.port !== 'number') {
       throw new InvalidInstanceDataError('port must be a number', 'port', obj.port)
     }
-    if (!Number.isInteger(obj.port) || obj.port < 49152 || obj.port > 65535) {
-      throw new InvalidInstanceDataError('port must be in dynamic/private range (49152-65535)', 'port', obj.port)
+    if (!Number.isInteger(obj.port) || obj.port < DAEMON_PORT_MIN || obj.port > DAEMON_PORT_MAX) {
+      throw new InvalidInstanceDataError(
+        `port must be in dynamic/private range (${DAEMON_PORT_MIN}-${DAEMON_PORT_MAX})`,
+        'port',
+        obj.port,
+      )
     }
 
     // Validate startedAt
