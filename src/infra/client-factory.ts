@@ -179,8 +179,13 @@ export class TransportClientFactory implements IClientFactory {
 
     const client = await this.connectWithRetry(url, instance.port, fromDir)
 
+    // Auto-fill projectPath from discovered projectRoot when caller didn't provide one.
+    // This ensures clients register with the correct project root (walked-up from fromDir)
+    // instead of a raw subdirectory path.
+    const registrationOptions = options?.projectPath !== undefined ? options : {...options, projectPath: projectRoot}
+
     // Auto-registration after successful connection (non-fatal)
-    const registrationStatus = await this.performRegistration(client, options)
+    const registrationStatus = await this.performRegistration(client, registrationOptions)
 
     // Set server URL resolver for daemon-aware reconnection (Tier 3)
     if (serverUrlResolver) {
