@@ -1,12 +1,13 @@
-import {access, readFile} from 'node:fs/promises'
-import {dirname, join} from 'node:path'
+import {readFile} from 'node:fs/promises'
+import {join} from 'node:path'
 
 import type {DiscoveryResult, IInstanceDiscovery} from '../core/interfaces/i-instance-discovery.js'
 import type {IClientLogger} from '../core/interfaces/i-client-logger.js'
 
-import {BRV_DIR, DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../constants.js'
+import {DAEMON_INSTANCE_FILE, HEARTBEAT_FILE} from '../constants.js'
 import {InstanceInfo} from '../core/domain/entities/instance-info.js'
 import {checkDaemonHealth} from './daemon-health.js'
+import {findProjectRoot} from './find-project-root.js'
 import {getGlobalDataDir} from './global-data-path.js'
 import {NoOpClientLogger} from './no-op-client-logger.js'
 import {DaemonInstanceSchema} from './schemas/schemas.js'
@@ -45,32 +46,12 @@ export class DaemonInstanceDiscovery implements IInstanceDiscovery {
       return {found: false, reason}
     }
 
-    const projectRoot = await this.#findProjectRoot(fromDir)
+    const projectRoot = await findProjectRoot(fromDir)
 
     return {
       found: true,
       instance,
       ...(projectRoot !== undefined && {projectRoot}),
-    }
-  }
-
-  async #findProjectRoot(fromDir: string): Promise<string | undefined> {
-    let currentDir = fromDir
-
-    while (true) {
-      try {
-        await access(join(currentDir, BRV_DIR))
-        return currentDir
-      } catch {
-        // .brv/ not found at this level, walk up
-      }
-
-      const parentDir = dirname(currentDir)
-      if (parentDir === currentDir) {
-        // Reached filesystem root
-        return undefined
-      }
-      currentDir = parentDir
     }
   }
 

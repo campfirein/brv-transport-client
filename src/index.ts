@@ -327,6 +327,7 @@ export {SpawnLock} from './infra/spawn-lock.js'
 
 // Discovery implementations
 export {DaemonInstanceDiscovery} from './infra/daemon-instance-discovery.js'
+export {findProjectRoot} from './infra/find-project-root.js'
 export {getGlobalDataDir} from './infra/global-data-path.js'
 
 // Utilities

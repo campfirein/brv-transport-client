@@ -57,9 +57,10 @@ describe('DaemonInstanceDiscovery', () => {
       )
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
-      // Create project structure: projectDir/.brv/ and projectDir/sub/deep/
+      // Create project structure: projectDir/.brv/config.json and projectDir/sub/deep/
       const projectDir = await fs.mkdtemp(path.join(testDataDir, 'project-'))
       await fs.mkdir(path.join(projectDir, BRV_DIR))
+      await fs.writeFile(path.join(projectDir, BRV_DIR, 'config.json'), '{}')
       const subDir = path.join(projectDir, 'sub', 'deep')
       await fs.mkdir(subDir, {recursive: true})
 
@@ -82,14 +83,45 @@ describe('DaemonInstanceDiscovery', () => {
       )
       await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
 
-      // Create .brv/ in testDataDir itself
+      // Create .brv/config.json in testDataDir itself
       await fs.mkdir(path.join(testDataDir, BRV_DIR))
+      await fs.writeFile(path.join(testDataDir, BRV_DIR, 'config.json'), '{}')
 
       const result = await discovery.discover(testDataDir)
 
       expect(result.found).to.be.true
       if (result.found) {
         expect(result.projectRoot).to.equal(testDataDir)
+      }
+    })
+
+    it('should skip .brv/ without config.json (e.g. sessions-only subdirectory)', async () => {
+      const discovery = new DaemonInstanceDiscovery({dataDir: testDataDir})
+
+      // Create valid daemon.json + heartbeat
+      await fs.writeFile(
+        path.join(testDataDir, DAEMON_INSTANCE_FILE),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now()}),
+      )
+      await fs.writeFile(path.join(testDataDir, HEARTBEAT_FILE), String(Date.now()))
+
+      // Create project root with config.json
+      const projectDir = await fs.mkdtemp(path.join(testDataDir, 'project-'))
+      await fs.mkdir(path.join(projectDir, BRV_DIR))
+      await fs.writeFile(path.join(projectDir, BRV_DIR, 'config.json'), '{}')
+
+      // Create subdirectory with bare .brv/ (sessions only, no config.json)
+      const subDir = path.join(projectDir, 'src', 'modules')
+      await fs.mkdir(subDir, {recursive: true})
+      await fs.mkdir(path.join(subDir, BRV_DIR))
+      await fs.mkdir(path.join(subDir, BRV_DIR, 'sessions'))
+
+      // Walk-up from subdirectory should skip bare .brv/ and find project root
+      const result = await discovery.discover(subDir)
+
+      expect(result.found).to.be.true
+      if (result.found) {
+        expect(result.projectRoot).to.equal(projectDir)
       }
     })
 
