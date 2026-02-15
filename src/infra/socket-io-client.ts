@@ -611,7 +611,7 @@ export class TransportClient implements ITransportClient {
           // Server returned success without data (void response)
           resolve(undefined as TResponse)
         } else {
-          reject(new TransportRequestError(event, response.error))
+          reject(new TransportRequestError(event, response.error, response.code))
         }
       })
     })
@@ -620,7 +620,9 @@ export class TransportClient implements ITransportClient {
   /**
    * Type guard to validate server response structure.
    */
-  private isValidResponse(response: unknown): response is {data?: unknown; error?: string; success: boolean} {
+  private isValidResponse(
+    response: unknown,
+  ): response is {code?: string; data?: unknown; error?: string; success: boolean} {
     if (typeof response !== 'object' || response === null) {
       return false
     }
@@ -633,6 +635,11 @@ export class TransportClient implements ITransportClient {
 
     // error must be undefined or string
     if (obj.error !== undefined && typeof obj.error !== 'string') {
+      return false
+    }
+
+    // code must be undefined or string
+    if (obj.code !== undefined && typeof obj.code !== 'string') {
       return false
     }
 

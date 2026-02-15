@@ -111,18 +111,21 @@ export class TransportRequestTimeoutError extends TransportError {
  */
 export class TransportRequestError extends TransportError {
   public readonly event?: string
+  public readonly code?: string
 
-  public constructor(event: string, message?: string)
-  public constructor(options: {message: string})
-  public constructor(eventOrOptions: string | {message: string}, message?: string) {
+  public constructor(event: string, message?: string, code?: string)
+  public constructor(options: {code?: string; message: string})
+  public constructor(eventOrOptions: string | {code?: string; message: string}, message?: string, code?: string) {
     if (typeof eventOrOptions === 'object' && eventOrOptions !== null) {
       // Custom message override
       super(eventOrOptions.message)
+      this.code = eventOrOptions.code
     } else {
       // Auto-generate message
       const errorMessage = message ?? 'Request failed'
       super(`${errorMessage} for event '${eventOrOptions}'`)
       this.event = eventOrOptions
+      this.code = code
     }
     this.name = 'TransportRequestError'
   }
