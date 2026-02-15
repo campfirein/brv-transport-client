@@ -193,6 +193,27 @@ describe('Transport Errors', () => {
       expect(error.name).to.equal('TransportRequestError')
       expect(error.event).to.be.undefined
     })
+
+    it('should store code property when provided via positional args', () => {
+      const error = new TransportRequestError('task:create', 'Not authenticated', 'ERR_NOT_AUTHENTICATED')
+
+      expect(error.code).to.equal('ERR_NOT_AUTHENTICATED')
+      expect(error.event).to.equal('task:create')
+      expect(error.message).to.equal("Not authenticated for event 'task:create'")
+    })
+
+    it('should have undefined code when not provided', () => {
+      const error = new TransportRequestError('task:create', 'Server error')
+
+      expect(error.code).to.be.undefined
+    })
+
+    it('should store code property when provided via options object', () => {
+      const error = new TransportRequestError({message: 'Custom error', code: 'ERR_CUSTOM'})
+
+      expect(error.code).to.equal('ERR_CUSTOM')
+      expect(error.message).to.equal('Custom error')
+    })
   })
 
   describe('TransportRoomError', () => {
