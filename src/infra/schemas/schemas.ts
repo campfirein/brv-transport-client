@@ -156,6 +156,8 @@ export const TaskCreateRequestSchema = z.object({
  * task:ack - Server acknowledges task creation
  */
 export const TaskAckSchema = z.object({
+  /** Log entry ID, set when the task is tracked (e.g. curate log). */
+  logId: z.string().optional(),
   taskId: z.string(),
 })
 
