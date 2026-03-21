@@ -1,6 +1,6 @@
 {
   "name": "@campfirein/brv-transport-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Transport client for ByteRover CLI - server discovery, connection, and real-time communication",
   "type": "module",
   "main": "dist/index.js",
