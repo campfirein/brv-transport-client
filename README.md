@@ -147,4 +147,5 @@ import {
 
 ## License
 
-UNLICENSED - Private package for ByteRover ecosystem
+This project is licensed under the Elastic License 2.0.
+See [LICENSE](./LICENSE)
