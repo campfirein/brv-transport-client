@@ -5,10 +5,8 @@ Real-time transport client for ByteRover. Connects CLI/TUI/REPL clients to the B
 ## Installation
 
 ```bash
-npm install @campfirein/brv-transport-client
+npm install github:campfirein/brv-transport-client#<tag>
 ```
-
-Requires `.npmrc` configured for GitHub Packages.
 
 ## Quick Start
 
