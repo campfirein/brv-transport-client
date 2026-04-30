@@ -53,6 +53,21 @@ export interface ITransportClient {
   getClientId(): string | undefined
 
   /**
+   * Returns the daemon version reported in the most recent `client:register`
+   * ack. Refreshed on every reconnect, so consumers (e.g. drift indicators
+   * in the TUI header or MCP tool footers) always reflect the running daemon.
+   *
+   * @returns Daemon version, or undefined if no ack has been received or the
+   *   daemon is older than the version-aware build.
+   *
+   * @remarks Optional on the interface so older external implementations
+   * (custom transports, test doubles) keep compiling. The shipped
+   * `TransportClient` implements it; consumers should use `?.()` to tolerate
+   * missing implementations.
+   */
+  getDaemonVersion?(): string | undefined
+
+  /**
    * Returns the current connection state.
    */
   getState(): ConnectionState

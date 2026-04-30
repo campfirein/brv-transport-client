@@ -47,6 +47,35 @@ describe('TransportClient', () => {
     })
   })
 
+  describe('getDaemonVersion() / setDaemonVersion()', () => {
+    it('should return undefined initially (no register ack received)', () => {
+      // Pre-registration: drift indicators must hide gracefully against an
+      // older daemon that doesn't yet emit daemonVersion in the ack.
+      expect(client.getDaemonVersion()).to.be.undefined
+    })
+
+    it('should expose the value passed to setDaemonVersion()', () => {
+      // Factory calls setDaemonVersion() after parsing register ack;
+      // tools and TUI read via getDaemonVersion() to render drift state.
+      client.setDaemonVersion('3.10.0')
+      expect(client.getDaemonVersion()).to.equal('3.10.0')
+    })
+
+    it('should refresh when setDaemonVersion() is called again (post-reconnect)', () => {
+      // After daemon respawn (e.g. peer client upgraded the daemon), the
+      // reconnector triggers a fresh register ack carrying the new version.
+      client.setDaemonVersion('3.9.0')
+      client.setDaemonVersion('3.10.0')
+      expect(client.getDaemonVersion()).to.equal('3.10.0')
+    })
+
+    it('should clear when setDaemonVersion(undefined) is called', () => {
+      client.setDaemonVersion('3.10.0')
+      client.setDaemonVersion(undefined)
+      expect(client.getDaemonVersion()).to.be.undefined
+    })
+  })
+
   describe('on()', () => {
     it('should allow registering handlers before connect', () => {
       const handler = sinon.spy()

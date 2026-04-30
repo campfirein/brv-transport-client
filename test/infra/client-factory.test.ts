@@ -233,6 +233,84 @@ describe('checkServerStatus()', () => {
   })
 })
 
+describe('TransportClientFactory - Daemon version wiring', () => {
+  // The reason this test exists: drift indicators (TUI header, MCP tool footer)
+  // depend on `client.getDaemonVersion()` returning the value the daemon sent
+  // back in the register ack. If that wiring breaks, every drift indicator
+  // silently goes dark. A unit test on the wiring itself is the cheapest way
+  // to keep the entire chain honest.
+  //
+  // We exercise the private `performRegistration()` directly with a stub
+  // TransportClient because the public `connect()` path requires a real
+  // running server. The stub asserts:
+  //  1. when ack carries `daemonVersion`, `setDaemonVersion(value)` is called
+  //  2. when ack omits `daemonVersion`, `setDaemonVersion(undefined)` is still
+  //     called so older daemons cleanly clear any stale value from a prior
+  //     reconnect
+  let factory: TransportClientFactory
+
+  beforeEach(() => {
+    factory = new TransportClientFactory()
+  })
+
+  afterEach(() => {
+    sinon.restore()
+  })
+
+  function makeStubClient(ackResponse: unknown) {
+    const setDaemonVersion = sinon.spy()
+    const requestWithAck = sinon.stub().resolves(ackResponse)
+    const client = {
+      requestWithAck,
+      setDaemonVersion,
+    }
+    return {client, requestWithAck, setDaemonVersion}
+  }
+
+  it('calls setDaemonVersion with the daemonVersion field from the register ack', async () => {
+    const {client, setDaemonVersion} = makeStubClient({success: true, daemonVersion: '3.10.0'})
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (factory as any).performRegistration(client, {clientType: 'cli'})
+
+    expect(result).to.equal('success')
+    expect(setDaemonVersion.calledOnce).to.be.true
+    expect(setDaemonVersion.firstCall.args[0]).to.equal('3.10.0')
+  })
+
+  it('calls setDaemonVersion(undefined) when ack omits daemonVersion (older daemon)', async () => {
+    const {client, setDaemonVersion} = makeStubClient({success: true})
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (factory as any).performRegistration(client, {clientType: 'cli'})
+
+    expect(result).to.equal('success')
+    expect(setDaemonVersion.calledOnce).to.be.true
+    expect(setDaemonVersion.firstCall.args[0]).to.be.undefined
+  })
+
+  it('does not call setDaemonVersion when registration response fails schema validation', async () => {
+    const {client, setDaemonVersion} = makeStubClient({garbage: 'value'})
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (factory as any).performRegistration(client, {clientType: 'cli'})
+
+    expect(result).to.equal('failed')
+    expect(setDaemonVersion.called).to.be.false
+  })
+
+  it('skips registration entirely when autoRegister is false', async () => {
+    const {client, requestWithAck, setDaemonVersion} = makeStubClient({success: true, daemonVersion: '3.10.0'})
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (factory as any).performRegistration(client, {autoRegister: false})
+
+    expect(result).to.equal('skipped')
+    expect(requestWithAck.called).to.be.false
+    expect(setDaemonVersion.called).to.be.false
+  })
+})
+
 describe('TransportClientFactory - Logger Integration', () => {
   let testDir: string
 

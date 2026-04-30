@@ -52,7 +52,7 @@ export async function ensureDaemonRunning(options?: {
   const instanceManager = new GlobalInstanceManager({dataDir})
 
   // 1. Fast path: daemon already running and healthy — no lock needed
-  const status = discoverDaemon({dataDir, expectedVersion: version, instanceManager})
+  const status = discoverDaemon({clientVersion: version, dataDir, instanceManager})
   if (status.running) {
     return {info: {pid: status.pid, port: status.port}, started: false, success: true}
   }
@@ -74,15 +74,15 @@ export async function ensureDaemonRunning(options?: {
 
   try {
     // 4. Re-check after lock (race window between step 1 and lock acquisition)
-    const recheck = discoverDaemon({dataDir, expectedVersion: version, instanceManager})
+    const recheck = discoverDaemon({clientVersion: version, dataDir, instanceManager})
     if (recheck.running) {
       return {info: {pid: recheck.pid, port: recheck.port}, started: false, success: true}
     }
 
     // 5. Handle unhealthy daemon: gracefully stop when PID is alive but daemon
-    //    is not healthy (version mismatch or stale heartbeat). Safe — we hold the lock.
+    //    is not healthy (daemon outdated or stale heartbeat). Safe — we hold the lock.
     //    Stop budget is capped separately so it doesn't starve the poll phase.
-    if (recheck.reason === 'version_mismatch' || recheck.reason === 'heartbeat_stale') {
+    if (recheck.reason === 'daemon_outdated' || recheck.reason === 'heartbeat_stale') {
       const stopDeadline = Math.min(Date.now() + DAEMON_STOP_BUDGET_MS, overallDeadline)
       await gracefullyStopDaemon(recheck.pid, stopDeadline, pollIntervalMs)
     }
@@ -131,11 +131,11 @@ async function pollForDaemon(
   dataDir: string,
   deadline: number,
   instanceManager: IGlobalInstanceManager,
-  expectedVersion?: string,
+  clientVersion?: string,
   pollIntervalMs = DAEMON_READY_POLL_INTERVAL_MS,
 ): Promise<Pick<DaemonInstanceInfo, 'pid' | 'port'> | undefined> {
   while (Date.now() < deadline) {
-    const status = discoverDaemon({dataDir, expectedVersion, instanceManager})
+    const status = discoverDaemon({clientVersion, dataDir, instanceManager})
     if (status.running) {
       return {pid: status.pid, port: status.port}
     }
@@ -152,7 +152,7 @@ async function pollForDaemon(
  * Falls back to SIGKILL if the process doesn't die within the timeout
  * to prevent leaving orphaned daemon processes.
  *
- * Used when an unhealthy daemon (version mismatch or stale heartbeat)
+ * Used when an unhealthy daemon (daemon outdated or stale heartbeat)
  * needs to be stopped before spawning a replacement.
  */
 async function gracefullyStopDaemon(

@@ -240,6 +240,10 @@ export class TransportClient implements ITransportClient {
   #socket: Socket | undefined
   #serverUrl: string | undefined
 
+  // Daemon version captured from the most recent client:register ack.
+  // Refreshed on every successful registration, including post-reconnect.
+  #daemonVersion: string | undefined
+
   // Server URL resolver fallback (Tier 3 reconnection — daemon-aware)
   #serverUrlResolver: (() => Promise<string | undefined>) | undefined
   #urlResolveTimer: ReturnType<typeof setTimeout> | undefined
@@ -497,6 +501,20 @@ export class TransportClient implements ITransportClient {
 
   public getClientId(): string | undefined {
     return this.socket?.id
+  }
+
+  public getDaemonVersion(): string | undefined {
+    return this.#daemonVersion
+  }
+
+  /**
+   * Stores the daemon version reported in a `client:register` ack.
+   * Called by the factory after parsing the ack; surfaced to consumers via
+   * {@link getDaemonVersion}. Pass `undefined` to clear (e.g. when an older
+   * daemon ack omits the field).
+   */
+  public setDaemonVersion(version: string | undefined): void {
+    this.#daemonVersion = version
   }
 
   public async isConnected(timeoutMs: number = TRANSPORT_IS_CONNECTED_TIMEOUT_MS): Promise<boolean> {

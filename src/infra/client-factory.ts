@@ -330,7 +330,7 @@ export class TransportClientFactory implements IClientFactory {
    * @returns Registration outcome: 'success', 'failed', or 'skipped'
    */
   private async performRegistration(
-    client: ITransportClient,
+    client: TransportClient,
     options?: RegistrationOptions,
   ): Promise<'failed' | 'skipped' | 'success'> {
     // Default: autoRegister = true
@@ -364,6 +364,12 @@ export class TransportClientFactory implements IClientFactory {
         this.log(`Registration failed: ${validated.data.error ?? 'Unknown error'}`)
         return 'failed'
       }
+
+      // Capture daemon version from ack so consumers (TUI header, MCP tool
+      // footer) can render drift state without an extra round-trip. Absent
+      // when the daemon hasn't been updated yet — `setDaemonVersion(undefined)`
+      // is the safe default.
+      client.setDaemonVersion(validated.data.daemonVersion)
 
       this.log('Registration successful')
       return 'success'

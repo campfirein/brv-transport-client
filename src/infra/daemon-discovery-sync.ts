@@ -8,7 +8,7 @@ import {getGlobalDataDir} from './global-data-path.js'
 import {GlobalInstanceManager} from './global-instance-manager.js'
 
 export type DaemonStatus =
-  | {actualVersion?: string; expectedVersion: string; pid: number; reason: 'version_mismatch'; running: false}
+  | {clientVersion: string; daemonVersion: string; pid: number; reason: 'daemon_outdated'; running: false}
   | {pid: number; port: number; running: true}
   | {pid: number; reason: 'heartbeat_stale' | 'pid_dead'; running: false}
   | {reason: 'no_instance'; running: false}
@@ -20,18 +20,20 @@ export type DaemonStatus =
  * 1. daemon.json exists at <global-data-dir>/ and is valid
  * 2. PID is alive
  * 3. Heartbeat is fresh (<15s)
- * 4. Version matches expectedVersion (if provided)
+ * 4. Daemon version is at least as new as the calling client's (if provided).
+ *    Asymmetric: only a strictly-newer client triggers `daemon_outdated`.
  *
  * @param options - Discovery options.
  * @param options.dataDir - Custom data directory (defaults to global).
- * @param options.expectedVersion - If provided, daemon version must match.
- *   A mismatch returns `{running: false, reason: 'version_mismatch', pid}`.
+ * @param options.clientVersion - The calling client's own version. If provided,
+ *   the daemon must be at least this version. If the daemon is older returns
+ *   `{running: false, reason: 'daemon_outdated', pid}`.
  * @param options.instanceManager - Injectable for testing and caller reuse.
  *   Defaults to a new GlobalInstanceManager if not provided.
  */
 export function discoverDaemon(options?: {
+  clientVersion?: string
   dataDir?: string
-  expectedVersion?: string
   instanceManager?: IGlobalInstanceManager
 }): DaemonStatus {
   const dataDir = options?.dataDir ?? getGlobalDataDir()
@@ -45,17 +47,17 @@ export function discoverDaemon(options?: {
 
   const heartbeatPath = join(dataDir, HEARTBEAT_FILE)
   const health = checkDaemonHealth(instance.pid, heartbeatPath, {
-    actualVersion: instance.version,
-    expectedVersion: options?.expectedVersion,
+    clientVersion: options?.clientVersion,
+    daemonVersion: instance.version,
   })
 
   if (!health.healthy) {
-    if (health.reason === 'version_mismatch') {
+    if (health.reason === 'daemon_outdated') {
       return {
-        actualVersion: health.actualVersion,
-        expectedVersion: health.expectedVersion,
+        clientVersion: health.clientVersion,
+        daemonVersion: health.daemonVersion,
         pid: instance.pid,
-        reason: 'version_mismatch',
+        reason: 'daemon_outdated',
         running: false,
       }
     }

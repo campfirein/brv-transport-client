@@ -578,8 +578,13 @@ export const ClientRegisterRequestSchema = z.object({
 
 /**
  * client:register response
+ *
+ * `daemonVersion` is optional so a client running with a newer schema can
+ * still parse acks from a daemon that hasn't been updated yet (it simply
+ * arrives as `undefined`). This unblocks rolling upgrades.
  */
 export const ClientRegisterResponseSchema = z.object({
   success: z.boolean(),
   error: z.string().optional(),
+  daemonVersion: z.string().optional(),
 })
