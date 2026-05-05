@@ -87,35 +87,50 @@ describe('daemon-discovery-sync', () => {
       }
     })
 
-    it('should return version_mismatch when expectedVersion differs', () => {
+    it('should return daemon_outdated when client is newer than daemon', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
-      const status = discoverDaemon({dataDir: testDir, expectedVersion: '1.6.0'})
+      const status = discoverDaemon({dataDir: testDir, clientVersion: '1.6.0'})
 
       expect(status.running).to.be.false
-      if (!status.running && status.reason === 'version_mismatch') {
-        expect(status.actualVersion).to.equal('1.5.0')
-        expect(status.expectedVersion).to.equal('1.6.0')
+      if (!status.running && status.reason === 'daemon_outdated') {
+        expect(status.daemonVersion).to.equal('1.5.0')
+        expect(status.clientVersion).to.equal('1.6.0')
+      } else {
+        expect.fail(`expected daemon_outdated, got ${status.running ? 'running' : status.reason}`)
       }
     })
 
-    it('should return running when expectedVersion matches', () => {
+    it('should return running when client is older than daemon (loop-prevention)', () => {
+      // Older clients must connect to a newer daemon instead of SIGTERMing it.
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
       )
       writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
 
-      const status = discoverDaemon({dataDir: testDir, expectedVersion: '1.6.0'})
+      const status = discoverDaemon({dataDir: testDir, clientVersion: '1.5.0'})
 
       expect(status.running).to.be.true
     })
 
-    it('should skip version check when expectedVersion is not provided', () => {
+    it('should return running when clientVersion matches daemon', () => {
+      writeFileSync(
+        join(testDir, DAEMON_INSTANCE_FILE),
+        JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.6.0'}),
+      )
+      writeFileSync(join(testDir, HEARTBEAT_FILE), String(Date.now()))
+
+      const status = discoverDaemon({dataDir: testDir, clientVersion: '1.6.0'})
+
+      expect(status.running).to.be.true
+    })
+
+    it('should skip version check when clientVersion is not provided', () => {
       writeFileSync(
         join(testDir, DAEMON_INSTANCE_FILE),
         JSON.stringify({pid: process.pid, port: 49_847, startedAt: Date.now(), version: '1.5.0'}),

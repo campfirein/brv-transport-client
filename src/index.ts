@@ -319,6 +319,9 @@ export {discoverDaemon, type DaemonStatus} from './infra/daemon-discovery-sync.j
 // Daemon lifecycle - Health check
 export {checkDaemonHealth, type DaemonHealthResult} from './infra/daemon-health.js'
 
+// Version comparison (used by drift indicators across consumers)
+export {compareSemver, versionsAreEquivalent} from './infra/version-utils.js'
+
 // Daemon lifecycle - Infrastructure
 export {GlobalInstanceManager} from './infra/global-instance-manager.js'
 export {isHeartbeatStale} from './infra/heartbeat-utils.js'
